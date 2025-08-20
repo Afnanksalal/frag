@@ -1,0 +1,13 @@
+[package]
+name = "frag-compiler"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cranelift = "0.100.0"
+cranelift-codegen = "0.100.0"
+cranelift-frontend = "0.100.0"
+cranelift-jit = "0.100.0"
+cranelift-module = "0.100.0"
+cranelift-native = "0.100.0"
+target-lexicon = "0.12.0"
