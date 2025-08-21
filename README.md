@@ -15,17 +15,17 @@ Frag is still in its **prototype stage** — but it’s already capable of parsi
 
 ## ✨ Features (Current Status)
 
-✅ Lexical analysis (tokenizer)
+Lexical analysis (tokenizer)
 
-✅ Parser → AST (Abstract Syntax Tree)
+Parser → AST (Abstract Syntax Tree)
 
-✅ Expression evaluation (arithmetic, boolean logic)
+Expression evaluation (arithmetic, boolean logic)
 
-✅ Variable declarations and assignment
+Variable declarations and assignment
 
-✅ Print statements for output
+Print statements for output
 
-✅ Binary and unary operators
+Binary and unary operators
 
 ---
 
@@ -110,14 +110,14 @@ In short: Frag should feel like **C for robotics in 2025**, but with modern desi
 
 Here’s a rough roadmap for Frag development:
 
-### ✅ Stage 1 – MVP Interpreter (Current)
+### Stage 1 – MVP Interpreter (Current)
 
 * Basic lexer, parser, AST
 * Arithmetic & Boolean expressions
 * Variables & assignments
 * Print statements
 
-### 🔜 Stage 2 – Core Language
+### Stage 2 – Core Language
 
 * Functions, scopes, blocks
 * Type system (int, float, bool, string)
@@ -125,7 +125,7 @@ Here’s a rough roadmap for Frag development:
 * Standard library (math, string, IO)
 * REPL for quick experiments
 
-### ⚙️ Stage 3 – Systems Integration
+### Stage 3 – Systems Integration
 
 * Module & import system
 * FFI for C/Rust interop
@@ -133,14 +133,14 @@ Here’s a rough roadmap for Frag development:
 * Embedded platform support (Arduino, Raspberry Pi, etc.)
 * Hardware bindings (GPIO, UART, I²C, SPI)
 
-### 🤖 Stage 4 – Robotics Focus
+### Stage 4 – Robotics Focus
 
 * Real-time task scheduler
 * Messaging middleware (ROS-like pub/sub)
 * Motor, sensor, and actuator APIs
 * Simulation hooks (Gazebo/Unity integration)
 
-### 🔮 Stage 5 – Advanced Compilation
+### Stage 5 – Advanced Compilation
 
 * LLVM/MLIR backend for performance
 * FPGA/Verilog-lite backend for hardware synthesis
@@ -170,13 +170,13 @@ cargo run examples/example.frag
 
 ---
 
-## 📜 License
+## License
 
 MIT License – you can copy, modify, redistribute. Just don’t blame me if your robot decides to overthrow humanity.
 
 ---
 
-## 🖼️ Logo
+## Logo
 
 ![Frag Logo](./logo.png)
 
