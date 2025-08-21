@@ -163,7 +163,7 @@ Ways to contribute:
 ### Setup for Development
 
 ```bash
-git clone https://github.com/<your-username>/frag.git
+git clone https://github.com/Afnanksalal/frag.git
 cd frag
 cargo run examples/hello.frag
 ```
