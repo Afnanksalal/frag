@@ -49,7 +49,7 @@ print(flag);
 
 ```
 30
-false
+0
 42
 ```
 
