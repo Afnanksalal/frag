@@ -16,10 +16,15 @@ Frag is still in its **prototype stage** — but it’s already capable of parsi
 ## ✨ Features (Current Status)
 
 ✅ Lexical analysis (tokenizer)
+
 ✅ Parser → AST (Abstract Syntax Tree)
+
 ✅ Expression evaluation (arithmetic, boolean logic)
+
 ✅ Variable declarations and assignment
+
 ✅ Print statements for output
+
 ✅ Binary and unary operators
 
 ---
