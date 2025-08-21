@@ -178,7 +178,7 @@ MIT License – you can copy, modify, redistribute. Just don’t blame me if you
 
 ## 🖼️ Logo
 
-![Frag Logo](./assets/logo.png)
+![Frag Logo](./logo.png)
 
 ---
 
