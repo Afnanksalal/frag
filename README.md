@@ -61,14 +61,14 @@ Frag is written in **Rust**, so you’ll need Cargo.
 
 ```bash
 # Clone the repo
-git clone https://github.com/<your-username>/frag.git
+git clone https://github.com/Afnanksalal/frag.git
 cd frag
 
 # Build
 cargo build --release
 
 # Run an example
-cargo run examples/hello.frag
+cargo run examples/example.frag
 ```
 
 ---
@@ -165,7 +165,7 @@ Ways to contribute:
 ```bash
 git clone https://github.com/Afnanksalal/frag.git
 cd frag
-cargo run examples/hello.frag
+cargo run examples/example.frag
 ```
 
 ---
