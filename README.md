@@ -187,5 +187,3 @@ MIT License – you can copy, modify, redistribute. Just don’t blame me if you
 Frag wants to answer this question:
 **“What if C was invented today, but specifically for robotics and embedded systems?”**
 
-If that excites you — welcome aboard. 🚀
-
