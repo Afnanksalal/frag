@@ -296,6 +296,8 @@ module Counter {
 
 Detailed syntax notes live in [docs/LANGUAGE.md](docs/LANGUAGE.md).
 
+Long-term direction and roadmap live in [docs/FUTURE_SCOPE.md](docs/FUTURE_SCOPE.md).
+
 ## Install External Tools
 
 Frag itself only requires Rust. External tools are optional, but recommended for checking generated Verilog and viewing outputs.
