@@ -16,7 +16,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.96.0
         with:
           components: rustfmt, clippy
 
@@ -36,6 +36,9 @@ jobs:
         env:
           FRAG_REQUIRE_EXTERNAL_TOOLS: "1"
 
+      - name: Documentation
+        run: cargo doc --no-deps
+
       - name: Build release
         run: cargo build --release
 
@@ -44,7 +47,7 @@ jobs:
           mkdir -p target/ci-verilog
           for file in examples/*.frag; do
             name="$(basename "$file" .frag)"
-            cargo run --release -- verilog "$file" -o "target/ci-verilog/$name.v"
+            ./target/release/frag verilog "$file" -o "target/ci-verilog/$name.v"
             iverilog -g2012 -tnull "target/ci-verilog/$name.v"
             verilator --lint-only -Wno-DECLFILENAME "target/ci-verilog/$name.v"
           done

@@ -9,7 +9,7 @@ Frag is an educational compiler, so clarity matters as much as correctness. Pref
 Required:
 
 ```bash
-rustup toolchain install stable
+rustup toolchain install 1.96.0 --component clippy --component rustfmt
 cargo build
 ```
 
@@ -33,6 +33,7 @@ Rust-only checks:
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
+cargo doc --no-deps
 cargo build --release
 ```
 

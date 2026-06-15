@@ -316,34 +316,14 @@ fn eval_expr(expr: &Expr, values: &BTreeMap<String, u128>) -> u128 {
                 BinaryOp::Add => left.wrapping_add(right),
                 BinaryOp::Sub => left.wrapping_sub(right),
                 BinaryOp::Mul => left.wrapping_mul(right),
-                BinaryOp::Div => {
-                    if right == 0 {
-                        0
-                    } else {
-                        left / right
-                    }
-                }
-                BinaryOp::Mod => {
-                    if right == 0 {
-                        0
-                    } else {
-                        left % right
-                    }
-                }
-                BinaryOp::Shl => {
-                    if right >= 128 {
-                        0
-                    } else {
-                        left << right
-                    }
-                }
-                BinaryOp::Shr => {
-                    if right >= 128 {
-                        0
-                    } else {
-                        left >> right
-                    }
-                }
+                BinaryOp::Div => left.checked_div(right).unwrap_or(0),
+                BinaryOp::Mod => left.checked_rem(right).unwrap_or(0),
+                BinaryOp::Shl => checked_shift(right)
+                    .and_then(|shift| left.checked_shl(shift))
+                    .unwrap_or(0),
+                BinaryOp::Shr => checked_shift(right)
+                    .and_then(|shift| left.checked_shr(shift))
+                    .unwrap_or(0),
                 BinaryOp::Lt => (left < right) as u128,
                 BinaryOp::Le => (left <= right) as u128,
                 BinaryOp::Gt => (left > right) as u128,
@@ -358,6 +338,10 @@ fn eval_expr(expr: &Expr, values: &BTreeMap<String, u128>) -> u128 {
             }
         }
     }
+}
+
+fn checked_shift(value: u128) -> Option<u32> {
+    u32::try_from(value).ok()
 }
 
 fn signal_names(module: &IrModule, kind: IrSignalKind) -> Vec<String> {

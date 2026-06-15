@@ -42,6 +42,8 @@ Build the compiler:
 cargo build
 ```
 
+The repository pins Rust in [rust-toolchain.toml](rust-toolchain.toml). `rustup` will automatically use the pinned toolchain when you run Cargo commands in this directory.
+
 Run the HalfAdder example:
 
 ```bash
@@ -313,6 +315,7 @@ Rust-only checks:
 cargo fmt --check
 cargo clippy --all-targets -- -D warnings
 cargo test
+cargo doc --no-deps
 cargo build --release
 ```
 

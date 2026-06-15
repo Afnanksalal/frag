@@ -317,10 +317,10 @@ fn eval_unsized_const(expr: &Expr) -> Option<u128> {
                 BinaryOp::Add => left.checked_add(right),
                 BinaryOp::Sub => left.checked_sub(right),
                 BinaryOp::Mul => left.checked_mul(right),
-                BinaryOp::Div => (right != 0).then_some(left / right),
-                BinaryOp::Mod => (right != 0).then_some(left % right),
-                BinaryOp::Shl => left.checked_shl(right as u32),
-                BinaryOp::Shr => left.checked_shr(right as u32),
+                BinaryOp::Div => left.checked_div(right),
+                BinaryOp::Mod => left.checked_rem(right),
+                BinaryOp::Shl => checked_shift(right).and_then(|shift| left.checked_shl(shift)),
+                BinaryOp::Shr => checked_shift(right).and_then(|shift| left.checked_shr(shift)),
                 BinaryOp::Lt => Some((left < right) as u128),
                 BinaryOp::Le => Some((left <= right) as u128),
                 BinaryOp::Gt => Some((left > right) as u128),
@@ -335,6 +335,10 @@ fn eval_unsized_const(expr: &Expr) -> Option<u128> {
             }
         }
     }
+}
+
+fn checked_shift(value: u128) -> Option<u32> {
+    u32::try_from(value).ok()
 }
 
 fn constant_order(module: &Module) -> Result<Vec<usize>> {
