@@ -1,1 +1,9 @@
 /target
+obj_dir/
+*.vcd
+*.fst
+*.vvp
+*.out
+*.pdb
+.DS_Store
+.env

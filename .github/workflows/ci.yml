@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  rust:
+    name: Rust and HDL toolchain checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Install HDL tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y iverilog verilator graphviz
+
+      - name: Format
+        run: cargo fmt --check
+
+      - name: Clippy
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test
+        run: cargo test
+        env:
+          FRAG_REQUIRE_EXTERNAL_TOOLS: "1"
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Lint every generated example with Icarus and Verilator
+        run: |
+          mkdir -p target/ci-verilog
+          for file in examples/*.frag; do
+            name="$(basename "$file" .frag)"
+            cargo run --release -- verilog "$file" -o "target/ci-verilog/$name.v"
+            iverilog -g2012 -tnull "target/ci-verilog/$name.v"
+            verilator --lint-only -Wno-DECLFILENAME "target/ci-verilog/$name.v"
+          done

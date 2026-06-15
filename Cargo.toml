@@ -2,12 +2,21 @@
 name = "frag-compiler"
 version = "0.1.0"
 edition = "2021"
+authors = ["Afnan K Salal (@afnanksalal)"]
+description = "A tiny HDL compiler in Rust for learning compiler construction and digital hardware design."
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/afnanksalal/frag"
+homepage = "https://github.com/afnanksalal/frag"
+keywords = ["hdl", "compiler", "verilog", "hardware", "rust"]
+categories = ["compilers", "command-line-utilities", "development-tools"]
+
+[lib]
+name = "frag_compiler"
+path = "src/lib.rs"
+
+[[bin]]
+name = "frag"
+path = "src/main.rs"
 
 [dependencies]
-cranelift = "0.100.0"
-cranelift-codegen = "0.100.0"
-cranelift-frontend = "0.100.0"
-cranelift-jit = "0.100.0"
-cranelift-module = "0.100.0"
-cranelift-native = "0.100.0"
-target-lexicon = "0.12.0"
