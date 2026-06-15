@@ -1,6 +1,6 @@
 [package]
 name = "frag-compiler"
-version = "0.1.0"
+version = "0.1.0-alpha.1"
 edition = "2021"
 authors = ["Afnan K Salal (@afnanksalal)"]
 description = "A tiny HDL compiler in Rust for learning compiler construction and digital hardware design."

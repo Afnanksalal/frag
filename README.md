@@ -358,6 +358,12 @@ for file in examples/*.frag; do
 done
 ```
 
+## Releases
+
+Releases are tag-driven. Pushing a tag like `v0.1.0-alpha.1` runs the GitHub release workflow and creates a draft release with Linux, macOS, and Windows binaries plus checksum files.
+
+Release process notes live in [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md).
+
 ## Repository Layout
 
 ```text

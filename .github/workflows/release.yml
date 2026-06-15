@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build release artifact (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target_name: linux-x86_64
+            binary: frag
+            archive_ext: tar.gz
+          - os: macos-latest
+            target_name: macos-aarch64
+            binary: frag
+            archive_ext: tar.gz
+          - os: windows-latest
+            target_name: windows-x86_64
+            binary: frag.exe
+            archive_ext: zip
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@1.96.0
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Test
+        run: cargo test
+
+      - name: Package
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${GITHUB_REF_NAME}"
+          package_dir="frag-${version}-${{ matrix.target_name }}"
+          artifact="frag-${version}-${{ matrix.target_name }}.${{ matrix.archive_ext }}"
+
+          mkdir -p "dist" "$package_dir"
+          cp "README.md" "LICENSE" "CHANGELOG.md" "$package_dir/"
+          cp -R "docs" "examples" "$package_dir/"
+
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            cp "target/release/${{ matrix.binary }}" "$package_dir/"
+            powershell -NoProfile -Command "Compress-Archive -Path '$package_dir/*' -DestinationPath 'dist/$artifact'"
+          else
+            cp "target/release/${{ matrix.binary }}" "$package_dir/"
+            tar -czf "dist/$artifact" "$package_dir"
+          fi
+
+          cd dist
+          sha256sum "$artifact" > "$artifact.sha256"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frag-${{ github.ref_name }}-${{ matrix.target_name }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub release
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
+          body_path: RELEASE_NOTES.md
+          files: dist/*
