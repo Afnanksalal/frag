@@ -1,4 +1,18 @@
-# Frag
+<p align="center">
+  <img src="logo.png" alt="Frag logo" width="180">
+</p>
+
+<h1 align="center">Frag</h1>
+
+<p align="center">
+  A tiny HDL compiler in Rust for learning compiler construction and digital hardware design.
+</p>
+
+<p align="center">
+  <a href="https://github.com/afnanksalal/frag/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/afnanksalal/frag/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg"></a>
+  <img alt="Rust" src="https://img.shields.io/badge/rust-1.96.0-orange.svg">
+</p>
 
 Frag is a tiny Hardware Description Language (HDL) compiler written in Rust.
 
