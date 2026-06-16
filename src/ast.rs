@@ -98,6 +98,17 @@ pub enum Edge {
     Falling,
 }
 
+/// One arm in a case expression.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct CaseArm {
+    /// Match expression. `None` represents the default `else` arm.
+    pub pattern: Option<Expr>,
+    /// Value selected by this arm.
+    pub value: Expr,
+    /// Source span covering the arm.
+    pub span: Span,
+}
+
 /// Expression tree.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum Expr {
@@ -153,6 +164,15 @@ pub enum Expr {
         /// Source span covering the expression.
         span: Span,
     },
+    /// Case selection expression.
+    Case {
+        /// Selector expression.
+        selector: Box<Expr>,
+        /// Match arms. Exactly one arm must be the default `else` arm.
+        arms: Vec<CaseArm>,
+        /// Source span covering the expression.
+        span: Span,
+    },
 }
 
 impl Expr {
@@ -164,7 +184,8 @@ impl Expr {
             | Expr::Signal { span, .. }
             | Expr::Unary { span, .. }
             | Expr::Binary { span, .. }
-            | Expr::Conditional { span, .. } => *span,
+            | Expr::Conditional { span, .. }
+            | Expr::Case { span, .. } => *span,
         }
     }
 }

@@ -1,0 +1,14 @@
+flowchart LR
+  sig_sel["sel<br/>input u2"]
+  sig_a["a<br/>input u8"]
+  sig_b["b<br/>input u8"]
+  sig_c["c<br/>input u8"]
+  sig_d["d<br/>input u8"]
+  sig_out["out<br/>output u8"]
+  op_0(("CASE"))
+  sig_sel -- sel --> op_0
+  sig_a -- 0 --> op_0
+  sig_b -- 1 --> op_0
+  sig_c -- 2 --> op_0
+  sig_d -- else --> op_0
+  op_0 --> sig_out

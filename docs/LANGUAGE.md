@@ -148,6 +148,32 @@ The result width is the wider of the two selectable branches. Assigning that
 result to a narrower target is rejected unless the whole expression is an
 unsized constant that fits.
 
+## Case Expressions
+
+Case expressions select one value from multiple patterns:
+
+```frag
+out = case sel {
+    0 => a,
+    1 => b,
+    2 => c,
+    else => d
+};
+```
+
+Rules:
+
+- A case expression must contain exactly one `else` arm.
+- The `else` arm must be last.
+- Constant duplicate patterns are rejected.
+- Pattern expressions cannot be wider than the selector.
+- Constant patterns must fit in the selector width.
+- Pattern and value expressions are resolved and checked like other
+  expressions.
+- The result width is the widest arm value.
+
+The Verilog backend emits nested ternary expressions.
+
 ## Literals
 
 ```frag

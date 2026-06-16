@@ -143,7 +143,25 @@ pub fn expr(expr: &IrExpr) -> String {
             self::expr(when_true),
             self::expr(when_false)
         ),
+        IrExpr::Case { selector, arms, .. } => case_expr(selector, arms),
     }
+}
+
+fn case_expr(selector: &IrExpr, arms: &[crate::ir::IrCaseArm]) -> String {
+    let selector = self::expr(selector);
+    let mut fallback = arms
+        .iter()
+        .find(|arm| arm.pattern.is_none())
+        .map(|arm| self::expr(&arm.value))
+        .expect("IR validation requires one default case arm");
+
+    for arm in arms.iter().rev().filter(|arm| arm.pattern.is_some()) {
+        let pattern = self::expr(arm.pattern.as_ref().expect("filtered to patterns"));
+        let value = self::expr(&arm.value);
+        fallback = format!("(({} == {}) ? {} : {})", selector, pattern, value, fallback);
+    }
+
+    fallback
 }
 
 fn unary(op: UnaryOp) -> &'static str {

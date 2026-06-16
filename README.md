@@ -43,6 +43,7 @@ Supported:
 - Sequential `on rising(clk)` and `on falling(clk)` processes
 - Arithmetic, comparison, logical, bitwise, and shift operators
 - `if condition { a } else { b }` conditional expressions
+- `case selector { pattern => value, else => value }` expressions
 - Source-span diagnostics
 - IR validation after lowering
 - Verilog generation
@@ -188,6 +189,16 @@ Generated Verilog:
 assign out = (sel ? a : b);
 ```
 
+Case expression:
+
+```frag
+out = case sel {
+    0 => a,
+    1 => b,
+    else => c
+};
+```
+
 ## Verification
 
 Rust-only checks:
@@ -248,6 +259,7 @@ The repository includes these circuits:
 - 2:1 mux
 - 2-to-4 decoder
 - 4:1 conditional mux
+- 4:1 case mux
 - 4-bit incrementer
 - 8-bit register
 - AND gate
@@ -262,6 +274,7 @@ The repository includes these circuits:
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Language reference](docs/LANGUAGE.md)
+- [Grammar](docs/GRAMMAR.md)
 - [Roadmap](docs/FUTURE_SCOPE.md)
 - [Release process](docs/RELEASE_PROCESS.md)
 - [Contributing](CONTRIBUTING.md)
@@ -269,7 +282,7 @@ The repository includes these circuits:
 
 ## Releases
 
-Releases are tag-driven. Pushing a version tag such as `v0.1.0-alpha.2` runs
+Releases are tag-driven. Pushing a version tag such as `v0.1.0-alpha.N` runs
 the release workflow and uploads Linux, macOS, and Windows binaries with
 checksum files.
 

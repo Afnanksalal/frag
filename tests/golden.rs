@@ -40,6 +40,36 @@ fn mux4_if_mermaid_matches_golden() {
     );
 }
 
+#[test]
+fn mux4_case_ir_matches_golden() {
+    let source = include_str!("../examples/mux4_case.frag");
+    let compiled = compile(source).expect("mux4_case should compile");
+    assert_eq!(
+        normalize(&compiled.ir.to_string()),
+        normalize(include_str!("golden/mux4_case.ir"))
+    );
+}
+
+#[test]
+fn mux4_case_verilog_matches_golden() {
+    let source = include_str!("../examples/mux4_case.frag");
+    let compiled = compile(source).expect("mux4_case should compile");
+    assert_eq!(
+        normalize(&verilog::emit(&compiled.ir)),
+        normalize(include_str!("golden/mux4_case.v"))
+    );
+}
+
+#[test]
+fn mux4_case_mermaid_matches_golden() {
+    let source = include_str!("../examples/mux4_case.frag");
+    let compiled = compile(source).expect("mux4_case should compile");
+    assert_eq!(
+        normalize(&graph::emit_mermaid(&compiled.ir)),
+        normalize(include_str!("golden/mux4_case.mmd"))
+    );
+}
+
 fn normalize(text: &str) -> String {
     text.replace("\r\n", "\n")
 }

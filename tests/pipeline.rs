@@ -1,4 +1,4 @@
-use frag_compiler::ir::{self, IrAssign, IrExpr, IrModule, IrSignal, IrSignalKind};
+use frag_compiler::ir::{self, IrAssign, IrCaseArm, IrExpr, IrModule, IrSignal, IrSignalKind};
 use frag_compiler::simulator::{SimOptions, SimulationResult};
 use frag_compiler::{compile, graph, simulator, verilog};
 use std::collections::BTreeMap;
@@ -227,6 +227,58 @@ fn ir_validation_rejects_width_invariants() {
 }
 
 #[test]
+fn ir_validation_rejects_case_pattern_width_invariants() {
+    let module = IrModule {
+        name: "BadCaseWidthIr".to_string(),
+        signals: vec![
+            IrSignal {
+                name: "sel".to_string(),
+                kind: IrSignalKind::Input,
+                width: 2,
+            },
+            IrSignal {
+                name: "wide".to_string(),
+                kind: IrSignalKind::Input,
+                width: 4,
+            },
+            IrSignal {
+                name: "out".to_string(),
+                kind: IrSignalKind::Output,
+                width: 1,
+            },
+        ],
+        constants: Vec::new(),
+        combinational: vec![IrAssign {
+            target: "out".to_string(),
+            expr: IrExpr::Case {
+                selector: Box::new(IrExpr::Signal {
+                    name: "sel".to_string(),
+                    width: 2,
+                }),
+                arms: vec![
+                    IrCaseArm {
+                        pattern: Some(IrExpr::Signal {
+                            name: "wide".to_string(),
+                            width: 4,
+                        }),
+                        value: IrExpr::Const { value: 1, width: 1 },
+                    },
+                    IrCaseArm {
+                        pattern: None,
+                        value: IrExpr::Const { value: 0, width: 1 },
+                    },
+                ],
+                width: 1,
+            },
+        }],
+        processes: Vec::new(),
+    };
+
+    let error = ir::validate(&module).expect_err("wide IR case pattern should fail");
+    assert!(error.message.contains("case pattern width"));
+}
+
+#[test]
 fn conditional_expression_rejects_unsafe_branch_width() {
     let source = r#"
 module BadConditionalWidth {
@@ -241,6 +293,154 @@ module BadConditionalWidth {
 
     let error = compile(source).expect_err("wide branch should fail width checking");
     assert!(error.message.contains("Width mismatch"));
+}
+
+#[test]
+fn case_expression_lowers_and_simulates() {
+    let source = r#"
+module CaseMux {
+    input sel: u2;
+    input a: u4;
+    input b: u4;
+    input c: u4;
+    input d: u4;
+
+    output out: u4;
+
+    out = case sel {
+        0 => a,
+        1 => b,
+        2 => c,
+        else => d
+    };
+}
+"#;
+
+    let compiled = compile(source).expect("case mux should compile");
+    let IrExpr::Case {
+        selector,
+        arms,
+        width,
+    } = &compiled.ir.combinational[0].expr
+    else {
+        panic!("case expression should lower to an IR case expression");
+    };
+    assert_eq!(*width, 4);
+    assert!(matches!(
+        selector.as_ref(),
+        IrExpr::Signal { name, width: 2 } if name == "sel"
+    ));
+    assert_eq!(arms.len(), 4);
+    assert!(arms.iter().any(|arm| arm.pattern.is_none()));
+
+    let ir_text = compiled.ir.to_string();
+    assert!(ir_text.contains("Gate CASE"));
+    assert!(ir_text.contains("Arm 2: c"));
+    assert!(ir_text.contains("Else: d"));
+
+    let verilog = verilog::emit(&compiled.ir);
+    assert!(verilog
+        .contains("assign out = ((sel == 0) ? a : ((sel == 1) ? b : ((sel == 2) ? c : d)));"));
+
+    let dot = graph::emit_dot(&compiled.ir);
+    assert!(dot.contains("CASE"));
+    assert!(dot.contains("[label=\"else\"]"));
+
+    let mermaid = graph::emit_mermaid(&compiled.ir);
+    assert!(mermaid.contains("CASE"));
+
+    let mut inputs = BTreeMap::new();
+    inputs.insert("sel".to_string(), 2);
+    inputs.insert("a".to_string(), 10);
+    inputs.insert("b".to_string(), 11);
+    inputs.insert("c".to_string(), 12);
+    inputs.insert("d".to_string(), 13);
+    let result = simulator::run(&compiled.ir, &SimOptions { ticks: 1, inputs })
+        .expect("selected case branch should simulate");
+    let SimulationResult::TruthTable(table) = result else {
+        panic!("case mux should produce a truth table");
+    };
+    assert_eq!(table.rows[0]["out"], 12);
+}
+
+#[test]
+fn case_expression_requires_else_arm() {
+    let source = r#"
+module MissingCaseElse {
+    input sel: bit;
+    input a: bit;
+    output out: bit;
+
+    out = case sel {
+        0 => a
+    };
+}
+"#;
+
+    let error = compile(source).expect_err("case without else should fail");
+    assert!(error.message.contains("requires an `else` arm"));
+}
+
+#[test]
+fn case_expression_rejects_duplicate_constant_patterns() {
+    let source = r#"
+module DuplicateCasePattern {
+    input sel: u2;
+    input a: bit;
+    input b: bit;
+    input c: bit;
+    output out: bit;
+
+    out = case sel {
+        1 => a,
+        1 => b,
+        else => c
+    };
+}
+"#;
+
+    let error = compile(source).expect_err("duplicate case pattern should fail");
+    assert!(error.message.contains("Duplicate constant case pattern"));
+}
+
+#[test]
+fn case_expression_rejects_wide_constant_patterns() {
+    let source = r#"
+module WideCasePattern {
+    input sel: u2;
+    input a: bit;
+    input b: bit;
+    output out: bit;
+
+    out = case sel {
+        4 => a,
+        else => b
+    };
+}
+"#;
+
+    let error = compile(source).expect_err("wide case pattern should fail");
+    assert!(error.message.contains("does not fit selector width"));
+}
+
+#[test]
+fn case_expression_requires_else_to_be_last() {
+    let source = r#"
+module CaseElseOrder {
+    input sel: bit;
+    input a: bit;
+    input b: bit;
+    output out: bit;
+
+    out = case sel {
+        else => a,
+        0 => b
+    };
+}
+"#;
+
+    let error = compile(source).expect_err("case arm after else should fail");
+    assert!(error.message.contains("last case arm"));
 }
 
 #[test]

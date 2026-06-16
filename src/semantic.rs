@@ -5,7 +5,7 @@
 
 use crate::ast::{Assignment, BinaryOp, DeclKind, Expr, Module, UnaryOp};
 use crate::diagnostic::{Diagnostic, Result, Span};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Semantic information produced for a checked module.
 #[derive(Clone, Debug)]
@@ -240,6 +240,67 @@ fn check_expr(expr: &Expr, symbols: &BTreeMap<String, Symbol>) -> Result<()> {
             check_expr(then_expr, symbols)?;
             check_expr(else_expr, symbols)
         }
+        Expr::Case { selector, arms, .. } => check_case_expr(selector, arms, symbols),
+    }
+}
+
+fn check_case_expr(
+    selector: &Expr,
+    arms: &[crate::ast::CaseArm],
+    symbols: &BTreeMap<String, Symbol>,
+) -> Result<()> {
+    check_expr(selector, symbols)?;
+    let selector_width = expr_width(selector, symbols);
+    let mut defaults = 0;
+    let mut constant_patterns = HashSet::new();
+
+    for arm in arms {
+        if let Some(pattern) = &arm.pattern {
+            check_expr(pattern, symbols)?;
+            if let Some(value) = eval_unsized_const(pattern) {
+                if min_bits(value) > selector_width {
+                    return Err(Diagnostic::at(
+                        pattern.span(),
+                        format!(
+                            "Case pattern `{}` does not fit selector width of {} bit(s)",
+                            value, selector_width
+                        ),
+                    ));
+                }
+                if !constant_patterns.insert(value) {
+                    return Err(Diagnostic::at(
+                        arm.span,
+                        format!("Duplicate constant case pattern `{}`", value),
+                    ));
+                }
+            } else {
+                let pattern_width = expr_width(pattern, symbols);
+                if pattern_width > selector_width {
+                    return Err(Diagnostic::at(
+                        pattern.span(),
+                        format!(
+                            "Case pattern is {} bit(s), wider than selector width of {} bit(s)",
+                            pattern_width, selector_width
+                        ),
+                    ));
+                }
+            }
+        } else {
+            defaults += 1;
+        }
+        check_expr(&arm.value, symbols)?;
+    }
+
+    match defaults {
+        1 => Ok(()),
+        0 => Err(Diagnostic::at(
+            selector.span(),
+            "Case expression requires an `else` arm",
+        )),
+        _ => Err(Diagnostic::at(
+            selector.span(),
+            "Case expression can contain only one `else` arm",
+        )),
     }
 }
 
@@ -299,6 +360,11 @@ pub fn expr_width(expr: &Expr, symbols: &BTreeMap<String, Symbol>) -> u32 {
             else_expr,
             ..
         } => expr_width(then_expr, symbols).max(expr_width(else_expr, symbols)),
+        Expr::Case { arms, .. } => arms
+            .iter()
+            .map(|arm| expr_width(&arm.value, symbols))
+            .max()
+            .unwrap_or(1),
     }
 }
 
@@ -363,6 +429,20 @@ fn eval_unsized_const(expr: &Expr) -> Option<u128> {
             } else {
                 else_value
             })
+        }
+        Expr::Case { selector, arms, .. } => {
+            let selector = eval_unsized_const(selector)?;
+            let mut default = None;
+            for arm in arms {
+                if let Some(pattern) = &arm.pattern {
+                    if eval_unsized_const(pattern)? == selector {
+                        return eval_unsized_const(&arm.value);
+                    }
+                } else {
+                    default = Some(&arm.value);
+                }
+            }
+            eval_unsized_const(default?)
         }
     }
 }
@@ -522,6 +602,15 @@ fn collect_refs(expr: &Expr, refs: &mut Vec<SignalRef>) {
             collect_refs(condition, refs);
             collect_refs(then_expr, refs);
             collect_refs(else_expr, refs);
+        }
+        Expr::Case { selector, arms, .. } => {
+            collect_refs(selector, refs);
+            for arm in arms {
+                if let Some(pattern) = &arm.pattern {
+                    collect_refs(pattern, refs);
+                }
+                collect_refs(&arm.value, refs);
+            }
         }
         Expr::Number { .. } | Expr::Bool { .. } => {}
     }

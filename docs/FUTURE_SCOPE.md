@@ -47,6 +47,16 @@ Implemented language and tooling:
 out = if sel { a } else { b };
 ```
 
+- Case expressions:
+
+```frag
+out = case sel {
+    0 => a,
+    1 => b,
+    else => c
+};
+```
+
 - Verilog backend
 - Typed expression IR consumed by all backends
 - IR validation after lowering
@@ -65,8 +75,7 @@ Planned work:
 - Parser regression tests for every syntax form
 - More precise diagnostic spans
 - Better diagnostics for missing semicolons, braces, and `else` blocks
-- Snapshot tests for AST, IR, Verilog, and graph output
-- Documented grammar for the implemented language subset
+- Snapshot tests for AST and diagnostic output
 - Broader snapshot coverage across examples and diagnostics
 
 ## Milestone 2: Combinational Hardware Features
@@ -76,7 +85,6 @@ single-module model.
 
 Planned work:
 
-- `case` expressions
 - Bit indexing
 - Bit slicing
 - Concatenation
@@ -91,7 +99,7 @@ out = case sel {
     0 => a,
     1 => b,
     2 => c,
-    3 => d,
+    else => d
 };
 ```
 

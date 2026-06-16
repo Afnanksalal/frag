@@ -185,6 +185,29 @@ impl DotGraph {
                 ));
                 node
             }
+            IrExpr::Case { selector, arms, .. } => {
+                let selector = self.expr_node(selector);
+                let node = self.op_node("CASE");
+                self.line(&format!(
+                    "  \"{}\" -> \"{}\" [label=\"sel\"];",
+                    selector, node
+                ));
+                for arm in arms {
+                    let value = self.expr_node(&arm.value);
+                    let label = arm
+                        .pattern
+                        .as_ref()
+                        .map(expr_label)
+                        .unwrap_or_else(|| "else".to_string());
+                    self.line(&format!(
+                        "  \"{}\" -> \"{}\" [label=\"{}\"];",
+                        value,
+                        node,
+                        escape(&label)
+                    ));
+                }
+                node
+            }
         }
     }
 
@@ -260,6 +283,26 @@ impl MermaidGraph {
                 self.line(&format!("  {} -- 0 --> {}", when_false, node));
                 node
             }
+            IrExpr::Case { selector, arms, .. } => {
+                let selector = self.expr_node(selector);
+                let node = self.op_node("CASE");
+                self.line(&format!("  {} -- sel --> {}", selector, node));
+                for arm in arms {
+                    let value = self.expr_node(&arm.value);
+                    let label = arm
+                        .pattern
+                        .as_ref()
+                        .map(expr_label)
+                        .unwrap_or_else(|| "else".to_string());
+                    self.line(&format!(
+                        "  {} -- {} --> {}",
+                        value,
+                        mermaid_label(&label),
+                        node
+                    ));
+                }
+                node
+            }
         }
     }
 
@@ -317,6 +360,19 @@ fn expr_label(expr: &IrExpr) -> String {
             expr_label(when_true),
             expr_label(when_false)
         ),
+        IrExpr::Case { selector, arms, .. } => {
+            let arms = arms
+                .iter()
+                .map(|arm| match &arm.pattern {
+                    Some(pattern) => {
+                        format!("{} => {}", expr_label(pattern), expr_label(&arm.value))
+                    }
+                    None => format!("else => {}", expr_label(&arm.value)),
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("case {} {{ {} }}", expr_label(selector), arms)
+        }
     }
 }
 

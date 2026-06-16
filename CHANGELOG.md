@@ -6,6 +6,10 @@ This project follows semantic versioning once the language stabilizes. Until the
 
 ## Unreleased
 
+No unreleased changes yet.
+
+## v0.1.0-alpha.3 - 2026-06-16
+
 ### Changed
 
 - IR assignments and constants now store typed `IrExpr` nodes instead of AST expressions
@@ -13,6 +17,7 @@ This project follows semantic versioning once the language stabilizes. Until the
 - Simulator masks intermediate expression results to their IR widths
 - Architecture documentation now describes the typed IR contract
 - CI and release workflows use current GitHub action majors to avoid Node 20 deprecation warnings
+- Roadmap and language docs now include implemented case-expression syntax
 
 ### Added
 
@@ -20,6 +25,10 @@ This project follows semantic versioning once the language stabilizes. Until the
 - `frag check` command for frontend, semantic, and IR validation
 - IR validation pass for backend invariants
 - Golden output tests for representative IR, Verilog, and Mermaid output
+- `case selector { pattern => value, else => value }` expressions
+- `mux4_case.frag` example
+- Formal grammar reference in `docs/GRAMMAR.md`
+- Exhaustive property-style simulator tests for case selection and width masking
 
 ## v0.1.0-alpha.2 - 2026-06-16
 

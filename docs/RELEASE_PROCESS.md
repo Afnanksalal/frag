@@ -9,7 +9,7 @@ Frag is currently pre-1.0. Use alpha tags until the HDL surface is more stable.
 Example alpha release tag:
 
 ```text
-v0.1.0-alpha.2
+v0.1.0-alpha.3
 ```
 
 ## Pre-Release Checklist
@@ -41,9 +41,9 @@ done
 Commit all release changes, then tag:
 
 ```bash
-git tag -a v0.1.0-alpha.2 -m "Frag v0.1.0-alpha.2"
+git tag -a v0.1.0-alpha.3 -m "Frag v0.1.0-alpha.3"
 git push origin main
-git push origin v0.1.0-alpha.2
+git push origin v0.1.0-alpha.3
 ```
 
 The GitHub Actions release workflow builds platform artifacts and publishes a

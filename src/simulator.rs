@@ -348,6 +348,23 @@ fn eval_expr(expr: &IrExpr, values: &BTreeMap<String, u128>) -> u128 {
                 eval_expr(when_false, values)
             }
         }
+        IrExpr::Case { selector, arms, .. } => {
+            let selector = eval_expr(selector, values);
+            let mut default = None;
+            for arm in arms {
+                if let Some(pattern) = &arm.pattern {
+                    if eval_expr(pattern, values) == selector {
+                        return mask(eval_expr(&arm.value, values), expr.width());
+                    }
+                } else {
+                    default = Some(&arm.value);
+                }
+            }
+            eval_expr(
+                default.expect("IR validation requires one default case arm"),
+                values,
+            )
+        }
     };
     mask(value, expr.width())
 }

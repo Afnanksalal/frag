@@ -79,6 +79,15 @@ pub struct IrProcess {
     pub assignments: Vec<IrAssign>,
 }
 
+/// One arm in an IR case expression.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct IrCaseArm {
+    /// Match expression. `None` represents the default arm.
+    pub pattern: Option<IrExpr>,
+    /// Selected value.
+    pub value: IrExpr,
+}
+
 /// Typed expression node used by IR backends.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum IrExpr {
@@ -127,6 +136,15 @@ pub enum IrExpr {
         /// Expression result width.
         width: u32,
     },
+    /// Multi-way case expression.
+    Case {
+        /// Selector expression.
+        selector: Box<IrExpr>,
+        /// Case arms. Exactly one arm must be the default arm.
+        arms: Vec<IrCaseArm>,
+        /// Expression result width.
+        width: u32,
+    },
 }
 
 impl IrExpr {
@@ -137,7 +155,8 @@ impl IrExpr {
             | IrExpr::Signal { width, .. }
             | IrExpr::Unary { width, .. }
             | IrExpr::Binary { width, .. }
-            | IrExpr::Mux { width, .. } => *width,
+            | IrExpr::Mux { width, .. }
+            | IrExpr::Case { width, .. } => *width,
         }
     }
 }
@@ -330,6 +349,20 @@ fn lower_expr(expr: &Expr, symbols: &BTreeMap<String, Symbol>) -> IrExpr {
             when_false: Box::new(lower_expr(else_expr, symbols)),
             width,
         },
+        Expr::Case { selector, arms, .. } => IrExpr::Case {
+            selector: Box::new(lower_expr(selector, symbols)),
+            arms: arms
+                .iter()
+                .map(|arm| IrCaseArm {
+                    pattern: arm
+                        .pattern
+                        .as_ref()
+                        .map(|pattern| lower_expr(pattern, symbols)),
+                    value: lower_expr(&arm.value, symbols),
+                })
+                .collect(),
+            width,
+        },
     }
 }
 
@@ -472,6 +505,38 @@ fn validate_expr(expr: &IrExpr, bindings: &BTreeMap<String, IrBinding>) -> Resul
             validate_expr(when_false, bindings)?;
             let expected = when_true.width().max(when_false.width());
             validate_expected_width(*width, expected, "mux expression")?;
+        }
+        IrExpr::Case {
+            selector,
+            arms,
+            width,
+        } => {
+            validate_expr(selector, bindings)?;
+            let mut defaults = 0;
+            let mut expected = 1;
+            for arm in arms {
+                if let Some(pattern) = &arm.pattern {
+                    validate_expr(pattern, bindings)?;
+                    if pattern.width() > selector.width() {
+                        return Err(Diagnostic::new(format!(
+                            "IR case pattern width {} exceeds selector width {}",
+                            pattern.width(),
+                            selector.width()
+                        )));
+                    }
+                } else {
+                    defaults += 1;
+                }
+                validate_expr(&arm.value, bindings)?;
+                expected = expected.max(arm.value.width());
+            }
+            if defaults != 1 {
+                return Err(Diagnostic::new(format!(
+                    "IR case expression must contain exactly one default arm, found {}",
+                    defaults
+                )));
+            }
+            validate_expected_width(*width, expected, "case expression")?;
         }
     }
     Ok(())
@@ -624,6 +689,23 @@ fn write_assignment(
             writeln!(f, "{}  When 0: {}", indent, expr_inline(when_false))?;
             writeln!(f, "{}  Output: {}", indent, assignment.target)
         }
+        IrExpr::Case { selector, arms, .. } => {
+            writeln!(f, "{}Gate CASE", indent)?;
+            writeln!(f, "{}  Select: {}", indent, expr_inline(selector))?;
+            for arm in arms {
+                match &arm.pattern {
+                    Some(pattern) => writeln!(
+                        f,
+                        "{}  Arm {}: {}",
+                        indent,
+                        expr_inline(pattern),
+                        expr_inline(&arm.value)
+                    )?,
+                    None => writeln!(f, "{}  Else: {}", indent, expr_inline(&arm.value))?,
+                }
+            }
+            writeln!(f, "{}  Output: {}", indent, assignment.target)
+        }
         expr => writeln!(
             f,
             "{}Assign {} = {}",
@@ -654,6 +736,19 @@ pub fn expr_inline(expr: &IrExpr) -> String {
             expr_inline(when_true),
             expr_inline(when_false)
         ),
+        IrExpr::Case { selector, arms, .. } => {
+            let arms = arms
+                .iter()
+                .map(|arm| match &arm.pattern {
+                    Some(pattern) => {
+                        format!("{} => {}", expr_inline(pattern), expr_inline(&arm.value))
+                    }
+                    None => format!("else => {}", expr_inline(&arm.value)),
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("(case {} {{ {} }})", expr_inline(selector), arms)
+        }
     }
 }
 

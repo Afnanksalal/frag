@@ -5,7 +5,8 @@
 //! analysis.
 
 use crate::ast::{
-    Assignment, BinaryOp, DeclKind, Declaration, Edge, Expr, Module, Process, Type, UnaryOp,
+    Assignment, BinaryOp, CaseArm, DeclKind, Declaration, Edge, Expr, Module, Process, Type,
+    UnaryOp,
 };
 use crate::diagnostic::{Diagnostic, Result, Span};
 use crate::lexer::{lex, Token, TokenKind};
@@ -380,6 +381,7 @@ impl Parser {
                 span: token.span,
             }),
             TokenKind::If => self.parse_conditional_expr(token.span.start),
+            TokenKind::Case => self.parse_case_expr(token.span.start),
             TokenKind::LeftParen => {
                 let expr = self.parse_expr()?;
                 self.expect_simple(TokenKind::RightParen, "`)`")?;
@@ -406,6 +408,63 @@ impl Parser {
             condition: Box::new(condition),
             then_expr: Box::new(then_expr),
             else_expr: Box::new(else_expr),
+            span: Span::new(start, end),
+        })
+    }
+
+    fn parse_case_expr(&mut self, start: usize) -> Result<Expr> {
+        let selector = self.parse_expr()?;
+        self.expect_simple(TokenKind::LeftBrace, "`{`")?;
+
+        let mut arms = Vec::new();
+        let mut seen_else = false;
+        while !self.at_simple(&TokenKind::RightBrace) && !self.at_simple(&TokenKind::Eof) {
+            let arm_start = self.peek().span.start;
+            let pattern = if self.match_simple(&TokenKind::Else) {
+                if seen_else {
+                    return Err(Diagnostic::at(
+                        Span::new(arm_start, arm_start + 1),
+                        "Duplicate `else` arm in case expression",
+                    ));
+                }
+                seen_else = true;
+                None
+            } else {
+                if seen_else {
+                    return Err(Diagnostic::at(
+                        self.peek().span,
+                        "`else` arm must be the last case arm",
+                    ));
+                }
+                Some(self.parse_expr()?)
+            };
+
+            self.expect_simple(TokenKind::FatArrow, "`=>`")?;
+            let value = self.parse_expr()?;
+            let arm_end = value.span().end;
+            arms.push(CaseArm {
+                pattern,
+                value,
+                span: Span::new(arm_start, arm_end),
+            });
+
+            if self.at_simple(&TokenKind::RightBrace) {
+                break;
+            }
+            self.expect_simple(TokenKind::Comma, "`,` or `}`")?;
+        }
+
+        let end = self.expect_simple(TokenKind::RightBrace, "`}`")?.span.end;
+        if arms.is_empty() {
+            return Err(Diagnostic::at(
+                Span::new(start, end),
+                "Case expression requires at least one arm",
+            ));
+        }
+
+        Ok(Expr::Case {
+            selector: Box::new(selector),
+            arms,
             span: Span::new(start, end),
         })
     }
