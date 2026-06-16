@@ -1,43 +1,58 @@
-# Frag v0.1.0-alpha.4
+# Frag v0.1.0-alpha.5
 
-This alpha release adds bit indexing and slicing across the full compiler
-pipeline.
+This alpha release adds a larger control/datapath example and fixes bare
+comparison tokenization.
 
 ## Highlights
 
-- Added `expr[index]` one-bit indexing
-- Added `expr[msb:lsb]` descending inclusive slicing
-- Added typed IR slice nodes consumed by all backends
-- Added simulator support for indexed and sliced expressions
-- Added direct Verilog part-select output for named values
-- Added shift/mask Verilog output for sliced compound expressions
-- Added DOT and Mermaid output for slice nodes
-- Fixed graph output for constant references inside expressions
-- Added `examples/nibble_splitter.frag`
-- Added golden and exhaustive simulator tests for bit selection
+- Added `examples/control_datapath.frag`
+- The new example exercises registers, wires, constants, nested `if`, nested
+  `case`, arithmetic, comparisons, bit indexing/slicing, status flags,
+  simulation, VCD output, and graph generation
+- Fixed lexing for bare `<` and `>` comparison operators
+- Added a regression test for bare comparison parsing and simulation
+- Verified the generated control/datapath Verilog with Icarus Verilog and
+  Verilator
 
 ## Example
 
 ```frag
-module NibbleSplitter {
+module ControlDatapath {
+    input clk: bit;
+    input start: bit;
+    input opcode: u4;
     input data: u8;
 
-    output high: u4;
-    output low: u4;
-    output top: bit;
+    output result: u8;
+    output busy: bit;
+    output done: bit;
 
-    high = data[7:4];
-    low = data[3:0];
-    top = data[7];
+    reg acc: u8;
+    reg state: u3;
+
+    result = acc;
+    busy = state != 0;
+    done = state == 3;
+
+    on rising(clk) {
+        acc = if start { data ^ opcode } else { acc };
+        state = case state {
+            0 => if start { 1 } else { 0 },
+            1 => 2,
+            2 => 3,
+            else => 0
+        };
+    }
 }
 ```
 
 Generated Verilog:
 
 ```verilog
-assign high = data[7:4];
-assign low = data[3:0];
-assign top = data[7];
+always @(posedge clk) begin
+    acc <= (start ? (data ^ opcode) : acc);
+    state <= ((state == 0) ? (start ? 1 : 0) : ((state == 1) ? 2 : ((state == 2) ? 3 : 0)));
+end
 ```
 
 ## Compatibility

@@ -187,6 +187,8 @@ impl<'a> Lexer<'a> {
                 b'^' => self.single(TokenKind::Caret),
                 b'~' => self.single(TokenKind::Tilde),
                 b'!' => self.single(TokenKind::Bang),
+                b'<' => self.single(TokenKind::Less),
+                b'>' => self.single(TokenKind::Greater),
                 _ => {
                     let span = Span::new(self.pos, self.pos + 1);
                     return Err(Diagnostic::at(

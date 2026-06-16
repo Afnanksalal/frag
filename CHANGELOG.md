@@ -8,6 +8,19 @@ This project follows semantic versioning once the language stabilizes. Until the
 
 No unreleased changes yet.
 
+## v0.1.0-alpha.5 - 2026-06-16
+
+### Added
+
+- `control_datapath.frag` stress example covering state, nested conditionals,
+  case expressions, bit selection, arithmetic, flags, VCD, and graph output
+- Regression test for bare `<` and `>` comparison tokenization
+
+### Fixed
+
+- Lexer now recognizes bare `<` and `>` operators, not only `<=`, `>=`, `<<`,
+  and `>>`
+
 ## v0.1.0-alpha.4 - 2026-06-16
 
 ### Added

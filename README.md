@@ -273,6 +273,7 @@ The repository includes these circuits:
 - 8-bit register
 - AND gate
 - Constant mask
+- Control datapath stress circuit
 - Counter
 - Full adder
 - Half adder

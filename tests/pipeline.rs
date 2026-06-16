@@ -168,6 +168,35 @@ module ShiftedNot {
 }
 
 #[test]
+fn bare_comparison_operators_parse_and_simulate() {
+    let source = r#"
+module CompareBare {
+    input a: u4;
+    input b: u4;
+
+    output lt: bit;
+    output gt: bit;
+
+    lt = a < b;
+    gt = a > b;
+}
+"#;
+
+    let compiled = compile(source).expect("bare comparisons should compile");
+    let mut inputs = BTreeMap::new();
+    inputs.insert("a".to_string(), 3);
+    inputs.insert("b".to_string(), 9);
+
+    let result = simulator::run(&compiled.ir, &SimOptions { ticks: 1, inputs })
+        .expect("comparison simulation should work");
+    let SimulationResult::TruthTable(table) = result else {
+        panic!("comparison module should produce a truth table");
+    };
+    assert_eq!(table.rows[0]["lt"], 1);
+    assert_eq!(table.rows[0]["gt"], 0);
+}
+
+#[test]
 fn ir_validation_rejects_unknown_references() {
     let module = IrModule {
         name: "BrokenIr".to_string(),
