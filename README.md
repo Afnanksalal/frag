@@ -16,7 +16,7 @@
 
 Frag is a compact Hardware Description Language compiler. It parses `.frag`
 source files, performs semantic checks, lowers the checked module into a
-netlist-style IR, and emits Verilog, simulator output, or graph output.
+typed netlist-style IR, and emits Verilog, simulator output, or graph output.
 
 ```mermaid
 flowchart LR
@@ -44,6 +44,7 @@ Supported:
 - Arithmetic, comparison, logical, bitwise, and shift operators
 - `if condition { a } else { b }` conditional expressions
 - Source-span diagnostics
+- IR validation after lowering
 - Verilog generation
 - Truth-table and tick-based simulation
 - VCD waveform output
@@ -105,6 +106,7 @@ frag <file.frag>                  Generate Verilog
 frag tokens <file.frag>           Print tokens
 frag ast <file.frag>              Print AST
 frag ir <file.frag>               Print netlist IR
+frag check <file.frag>            Validate frontend, semantics, and IR
 frag verilog <file.frag> [-o out] Generate Verilog
 frag run <file.frag> [options]    Simulate a module
 frag graph <file.frag> [options]  Emit DOT or Mermaid graph output
@@ -113,6 +115,7 @@ frag graph <file.frag> [options]  Emit DOT or Mermaid graph output
 Simulation options:
 
 ```bash
+frag check examples/half_adder.frag
 frag run examples/half_adder.frag
 frag run examples/mux4_if.frag --set sel=2,a=10,b=20,c=30,d=40
 frag run examples/counter.frag --ticks 16 --vcd target/counter.vcd

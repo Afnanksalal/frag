@@ -4,6 +4,23 @@ All notable changes to Frag are documented here.
 
 This project follows semantic versioning once the language stabilizes. Until then, pre-1.0 releases may still introduce breaking language or CLI changes.
 
+## Unreleased
+
+### Changed
+
+- IR assignments and constants now store typed `IrExpr` nodes instead of AST expressions
+- Verilog, simulator, DOT, and Mermaid backends now consume IR expressions directly
+- Simulator masks intermediate expression results to their IR widths
+- Architecture documentation now describes the typed IR contract
+- CI and release workflows opt into Node 24 for JavaScript actions
+
+### Added
+
+- Regression coverage for IR mux lowering and intermediate bit-width masking
+- `frag check` command for frontend, semantic, and IR validation
+- IR validation pass for backend invariants
+- Golden output tests for representative IR, Verilog, and Mermaid output
+
 ## v0.1.0-alpha.2 - 2026-06-16
 
 ### Added

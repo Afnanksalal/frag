@@ -1,3 +1,4 @@
+use frag_compiler::ir::{self, IrAssign, IrExpr, IrModule, IrSignal, IrSignalKind};
 use frag_compiler::simulator::{SimOptions, SimulationResult};
 use frag_compiler::{compile, graph, simulator, verilog};
 use std::collections::BTreeMap;
@@ -79,6 +80,29 @@ module IfMux {
 
     let compiled = compile(source).expect("conditional mux should compile");
 
+    let IrExpr::Mux {
+        select,
+        when_true,
+        when_false,
+        width,
+    } = &compiled.ir.combinational[0].expr
+    else {
+        panic!("conditional expression should lower to an IR mux");
+    };
+    assert_eq!(*width, 4);
+    assert!(matches!(
+        select.as_ref(),
+        IrExpr::Signal { name, width: 1 } if name == "sel"
+    ));
+    assert!(matches!(
+        when_true.as_ref(),
+        IrExpr::Signal { name, width: 4 } if name == "a"
+    ));
+    assert!(matches!(
+        when_false.as_ref(),
+        IrExpr::Signal { name, width: 4 } if name == "b"
+    ));
+
     let ir_text = compiled.ir.to_string();
     assert!(ir_text.contains("Gate MUX"));
     assert!(ir_text.contains("Select: sel"));
@@ -114,6 +138,92 @@ module IfMux {
         panic!("conditional mux should produce a truth table");
     };
     assert_eq!(table.rows[0]["out"], 3);
+}
+
+#[test]
+fn simulator_masks_intermediate_ir_expression_widths() {
+    let source = r#"
+module ShiftedNot {
+    input a: u4;
+    output out: u4;
+
+    out = ~a >> 1;
+}
+"#;
+
+    let compiled = compile(source).expect("shifted bit-not should compile");
+    let IrExpr::Binary { width, .. } = &compiled.ir.combinational[0].expr else {
+        panic!("shifted bit-not should lower to a binary expression");
+    };
+    assert_eq!(*width, 4);
+
+    let mut inputs = BTreeMap::new();
+    inputs.insert("a".to_string(), 0);
+    let result = simulator::run(&compiled.ir, &SimOptions { ticks: 1, inputs })
+        .expect("simulation should work");
+    let SimulationResult::TruthTable(table) = result else {
+        panic!("combinational module should produce a truth table");
+    };
+    assert_eq!(table.rows[0]["out"], 7);
+}
+
+#[test]
+fn ir_validation_rejects_unknown_references() {
+    let module = IrModule {
+        name: "BrokenIr".to_string(),
+        signals: vec![IrSignal {
+            name: "out".to_string(),
+            kind: IrSignalKind::Output,
+            width: 1,
+        }],
+        constants: Vec::new(),
+        combinational: vec![IrAssign {
+            target: "out".to_string(),
+            expr: IrExpr::Signal {
+                name: "missing".to_string(),
+                width: 1,
+            },
+        }],
+        processes: Vec::new(),
+    };
+
+    let error = ir::validate(&module).expect_err("unknown IR reference should fail");
+    assert!(error.message.contains("undeclared `missing`"));
+}
+
+#[test]
+fn ir_validation_rejects_width_invariants() {
+    let module = IrModule {
+        name: "BadWidthIr".to_string(),
+        signals: vec![
+            IrSignal {
+                name: "a".to_string(),
+                kind: IrSignalKind::Input,
+                width: 4,
+            },
+            IrSignal {
+                name: "out".to_string(),
+                kind: IrSignalKind::Output,
+                width: 4,
+            },
+        ],
+        constants: Vec::new(),
+        combinational: vec![IrAssign {
+            target: "out".to_string(),
+            expr: IrExpr::Unary {
+                op: frag_compiler::ast::UnaryOp::LogicNot,
+                expr: Box::new(IrExpr::Signal {
+                    name: "a".to_string(),
+                    width: 4,
+                }),
+                width: 4,
+            },
+        }],
+        processes: Vec::new(),
+    };
+
+    let error = ir::validate(&module).expect_err("invalid IR expression width should fail");
+    assert!(error.message.contains("unary expression"));
 }
 
 #[test]

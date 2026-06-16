@@ -1,10 +1,10 @@
 //! Graph backends for circuit visualization.
 //!
-//! These emitters are intended for documentation and teaching. They render the
+//! These emitters are intended for documentation and inspection. They render the
 //! same IR consumed by the Verilog backend and simulator.
 
-use crate::ast::{BinaryOp, Edge, Expr, UnaryOp};
-use crate::ir::IrModule;
+use crate::ast::{BinaryOp, Edge, UnaryOp};
+use crate::ir::{IrExpr, IrModule};
 
 /// Emit a Graphviz DOT graph for an IR module.
 pub fn emit_dot(module: &IrModule) -> String {
@@ -141,18 +141,17 @@ impl DotGraph {
         self.lines.join("\n") + "\n"
     }
 
-    fn expr_node(&mut self, expr: &Expr) -> String {
+    fn expr_node(&mut self, expr: &IrExpr) -> String {
         match expr {
-            Expr::Signal { name, .. } => format!("sig:{}", name),
-            Expr::Number { value, .. } => self.leaf(&value.to_string()),
-            Expr::Bool { value, .. } => self.leaf(if *value { "1" } else { "0" }),
-            Expr::Unary { op, expr, .. } => {
+            IrExpr::Signal { name, .. } => format!("sig:{}", name),
+            IrExpr::Const { value, .. } => self.leaf(&value.to_string()),
+            IrExpr::Unary { op, expr, .. } => {
                 let input = self.expr_node(expr);
                 let node = self.op_node(op_name_unary(*op));
                 self.line(&format!("  \"{}\" -> \"{}\";", input, node));
                 node
             }
-            Expr::Binary {
+            IrExpr::Binary {
                 op, left, right, ..
             } => {
                 let left = self.expr_node(left);
@@ -162,27 +161,27 @@ impl DotGraph {
                 self.line(&format!("  \"{}\" -> \"{}\";", right, node));
                 node
             }
-            Expr::Conditional {
-                condition,
-                then_expr,
-                else_expr,
+            IrExpr::Mux {
+                select,
+                when_true,
+                when_false,
                 ..
             } => {
-                let condition = self.expr_node(condition);
-                let then_expr = self.expr_node(then_expr);
-                let else_expr = self.expr_node(else_expr);
+                let select = self.expr_node(select);
+                let when_true = self.expr_node(when_true);
+                let when_false = self.expr_node(when_false);
                 let node = self.op_node("MUX");
                 self.line(&format!(
                     "  \"{}\" -> \"{}\" [label=\"sel\"];",
-                    condition, node
+                    select, node
                 ));
                 self.line(&format!(
                     "  \"{}\" -> \"{}\" [label=\"1\"];",
-                    then_expr, node
+                    when_true, node
                 ));
                 self.line(&format!(
                     "  \"{}\" -> \"{}\" [label=\"0\"];",
-                    else_expr, node
+                    when_false, node
                 ));
                 node
             }
@@ -226,18 +225,17 @@ impl MermaidGraph {
         self.lines.join("\n") + "\n"
     }
 
-    fn expr_node(&mut self, expr: &Expr) -> String {
+    fn expr_node(&mut self, expr: &IrExpr) -> String {
         match expr {
-            Expr::Signal { name, .. } => mermaid_id(&format!("sig_{}", name)),
-            Expr::Number { value, .. } => self.leaf(&value.to_string()),
-            Expr::Bool { value, .. } => self.leaf(if *value { "1" } else { "0" }),
-            Expr::Unary { op, expr, .. } => {
+            IrExpr::Signal { name, .. } => mermaid_id(&format!("sig_{}", name)),
+            IrExpr::Const { value, .. } => self.leaf(&value.to_string()),
+            IrExpr::Unary { op, expr, .. } => {
                 let input = self.expr_node(expr);
                 let node = self.op_node(op_name_unary(*op));
                 self.line(&format!("  {} --> {}", input, node));
                 node
             }
-            Expr::Binary {
+            IrExpr::Binary {
                 op, left, right, ..
             } => {
                 let left = self.expr_node(left);
@@ -247,19 +245,19 @@ impl MermaidGraph {
                 self.line(&format!("  {} --> {}", right, node));
                 node
             }
-            Expr::Conditional {
-                condition,
-                then_expr,
-                else_expr,
+            IrExpr::Mux {
+                select,
+                when_true,
+                when_false,
                 ..
             } => {
-                let condition = self.expr_node(condition);
-                let then_expr = self.expr_node(then_expr);
-                let else_expr = self.expr_node(else_expr);
+                let select = self.expr_node(select);
+                let when_true = self.expr_node(when_true);
+                let when_false = self.expr_node(when_false);
                 let node = self.op_node("MUX");
-                self.line(&format!("  {} -- sel --> {}", condition, node));
-                self.line(&format!("  {} -- 1 --> {}", then_expr, node));
-                self.line(&format!("  {} -- 0 --> {}", else_expr, node));
+                self.line(&format!("  {} -- sel --> {}", select, node));
+                self.line(&format!("  {} -- 1 --> {}", when_true, node));
+                self.line(&format!("  {} -- 0 --> {}", when_false, node));
                 node
             }
         }
@@ -295,13 +293,12 @@ fn edge(edge: Edge) -> &'static str {
     }
 }
 
-fn expr_label(expr: &Expr) -> String {
+fn expr_label(expr: &IrExpr) -> String {
     match expr {
-        Expr::Number { value, .. } => value.to_string(),
-        Expr::Bool { value, .. } => (*value as u8).to_string(),
-        Expr::Signal { name, .. } => name.clone(),
-        Expr::Unary { op, expr, .. } => format!("{}{}", op_name_unary(*op), expr_label(expr)),
-        Expr::Binary {
+        IrExpr::Const { value, .. } => value.to_string(),
+        IrExpr::Signal { name, .. } => name.clone(),
+        IrExpr::Unary { op, expr, .. } => format!("{}{}", op_name_unary(*op), expr_label(expr)),
+        IrExpr::Binary {
             op, left, right, ..
         } => format!(
             "{} {} {}",
@@ -309,16 +306,16 @@ fn expr_label(expr: &Expr) -> String {
             op_name(*op),
             expr_label(right)
         ),
-        Expr::Conditional {
-            condition,
-            then_expr,
-            else_expr,
+        IrExpr::Mux {
+            select,
+            when_true,
+            when_false,
             ..
         } => format!(
             "if {} then {} else {}",
-            expr_label(condition),
-            expr_label(then_expr),
-            expr_label(else_expr)
+            expr_label(select),
+            expr_label(when_true),
+            expr_label(when_false)
         ),
     }
 }

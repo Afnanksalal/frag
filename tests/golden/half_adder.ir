@@ -1,0 +1,13 @@
+Module HalfAdder
+Signals
+  input a: bit
+  input b: bit
+  output sum: bit
+  output carry: bit
+Combinational
+  Gate XOR
+    Inputs: a, b
+    Output: sum
+  Gate AND
+    Inputs: a, b
+    Output: carry

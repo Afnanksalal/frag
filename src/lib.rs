@@ -1,6 +1,6 @@
 //! Frag compiler library.
 //!
-//! The public API exposes each compiler stage for teaching and tooling:
+//! The public API exposes each compiler stage for inspection and tooling:
 //! lexing, parsing, semantic analysis, IR lowering, simulation, graph
 //! generation, and Verilog emission. Most callers should start with
 //! [`compile`], then pass the returned IR to a backend.
@@ -47,5 +47,6 @@ pub fn compile(source: &str) -> Result<CompileOutput> {
     let ast = parser::parse_source(source)?;
     let analysis = semantic::analyze(&ast)?;
     let ir = ir::lower(&ast, &analysis);
+    ir::validate(&ir)?;
     Ok(CompileOutput { ast, analysis, ir })
 }

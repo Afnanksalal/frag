@@ -29,7 +29,7 @@ fn run_cli() -> Result<()> {
         return Ok(());
     }
 
-    let commands = ["tokens", "ast", "ir", "verilog", "run", "graph"];
+    let commands = ["tokens", "ast", "ir", "check", "verilog", "run", "graph"];
     let (command, file, rest) = if commands.contains(&args[0].as_str()) {
         if args.len() < 2 {
             return Err(Diagnostic::new(format!(
@@ -46,6 +46,7 @@ fn run_cli() -> Result<()> {
         "tokens" => command_tokens(file),
         "ast" => command_ast(file),
         "ir" => command_ir(file),
+        "check" => command_check(file),
         "verilog" => command_verilog(file, rest),
         "run" => command_run(file, rest),
         "graph" => command_graph(file, rest),
@@ -81,6 +82,13 @@ fn command_ir(file: &str) -> Result<()> {
     let source = read_source(file)?;
     let output = compile(&source).map_err(|error| with_file(error, file, &source))?;
     println!("{}", output.ir);
+    Ok(())
+}
+
+fn command_check(file: &str) -> Result<()> {
+    let source = read_source(file)?;
+    let output = compile(&source).map_err(|error| with_file(error, file, &source))?;
+    println!("OK {}", output.ir.name);
     Ok(())
 }
 
@@ -324,6 +332,7 @@ fn print_usage() {
   frag tokens <file.frag>           Print tokens
   frag ast <file.frag>              Print AST
   frag ir <file.frag>               Print netlist IR
+  frag check <file.frag>            Validate frontend, semantics, and IR
   frag verilog <file.frag> [-o out] Generate Verilog
   frag run <file.frag> [--ticks N] [--set a=1,b=0] [--vcd out.vcd]
   frag graph <file.frag> [--format dot|mermaid] [-o out]"

@@ -33,6 +33,10 @@ fn generated_verilog_is_accepted_by_external_tools() {
     fs::write(&fresh_frag, fresh_probe_source()).expect("write fresh source");
 
     run_checked(
+        "frag check fresh source",
+        Command::new(frag_bin()).arg("check").arg(&fresh_frag),
+    );
+    run_checked(
         "frag verilog fresh source",
         Command::new(frag_bin())
             .arg("verilog")

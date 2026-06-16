@@ -3,9 +3,9 @@
 //! Combinational modules produce truth tables when practical. Sequential
 //! modules run for a configurable number of ticks and can be exported as VCD.
 
-use crate::ast::{BinaryOp, Edge, Expr, UnaryOp};
+use crate::ast::{BinaryOp, Edge, UnaryOp};
 use crate::diagnostic::{Diagnostic, Result};
-use crate::ir::{IrModule, IrSignalKind};
+use crate::ir::{IrExpr, IrModule, IrSignalKind};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
@@ -294,12 +294,11 @@ fn evaluate_combinational(module: &IrModule, values: &mut BTreeMap<String, u128>
     }
 }
 
-fn eval_expr(expr: &Expr, values: &BTreeMap<String, u128>) -> u128 {
-    match expr {
-        Expr::Number { value, .. } => *value,
-        Expr::Bool { value, .. } => (*value) as u128,
-        Expr::Signal { name, .. } => values.get(name).copied().unwrap_or(0),
-        Expr::Unary { op, expr, .. } => {
+fn eval_expr(expr: &IrExpr, values: &BTreeMap<String, u128>) -> u128 {
+    let value = match expr {
+        IrExpr::Const { value, .. } => *value,
+        IrExpr::Signal { name, .. } => values.get(name).copied().unwrap_or(0),
+        IrExpr::Unary { op, expr, .. } => {
             let value = eval_expr(expr, values);
             match op {
                 UnaryOp::LogicNot => (value == 0) as u128,
@@ -307,7 +306,7 @@ fn eval_expr(expr: &Expr, values: &BTreeMap<String, u128>) -> u128 {
                 UnaryOp::Neg => 0u128.wrapping_sub(value),
             }
         }
-        Expr::Binary {
+        IrExpr::Binary {
             op, left, right, ..
         } => {
             let left = eval_expr(left, values);
@@ -337,19 +336,20 @@ fn eval_expr(expr: &Expr, values: &BTreeMap<String, u128>) -> u128 {
                 BinaryOp::LogicOr => ((left != 0) || (right != 0)) as u128,
             }
         }
-        Expr::Conditional {
-            condition,
-            then_expr,
-            else_expr,
+        IrExpr::Mux {
+            select,
+            when_true,
+            when_false,
             ..
         } => {
-            if eval_expr(condition, values) != 0 {
-                eval_expr(then_expr, values)
+            if eval_expr(select, values) != 0 {
+                eval_expr(when_true, values)
             } else {
-                eval_expr(else_expr, values)
+                eval_expr(when_false, values)
             }
         }
-    }
+    };
+    mask(value, expr.width())
 }
 
 fn checked_shift(value: u128) -> Option<u32> {

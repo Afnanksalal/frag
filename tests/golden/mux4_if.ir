@@ -1,0 +1,14 @@
+Module Mux4If
+Signals
+  input sel: u2
+  input a: u8
+  input b: u8
+  input c: u8
+  input d: u8
+  output out: u8
+Combinational
+  Gate MUX
+    Select: (sel == 0)
+    When 1: a
+    When 0: (if (sel == 1) then b else (if (sel == 2) then c else d))
+    Output: out

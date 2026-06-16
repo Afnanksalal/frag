@@ -13,7 +13,7 @@ and graph generation.
 - Keep the compiler pipeline explicit: lexer, parser, AST, semantic analysis,
   IR, and backends.
 - Do not emit Verilog directly from the AST.
-- Keep the source language small until the IR and diagnostics are stable.
+- Keep the source language small until the typed IR and diagnostics are stable.
 - Prefer explicit hardware semantics over implicit inference.
 - Maintain compatibility with Icarus Verilog and Verilator for generated
   Verilog.
@@ -48,6 +48,9 @@ out = if sel { a } else { b };
 ```
 
 - Verilog backend
+- Typed expression IR consumed by all backends
+- IR validation after lowering
+- `frag check`
 - Truth-table and tick-based simulator
 - VCD waveform output
 - Graphviz DOT and Mermaid output
@@ -62,9 +65,9 @@ Planned work:
 - Parser regression tests for every syntax form
 - More precise diagnostic spans
 - Better diagnostics for missing semicolons, braces, and `else` blocks
-- CLI `check` command that runs frontend and semantic analysis only
 - Snapshot tests for AST, IR, Verilog, and graph output
 - Documented grammar for the implemented language subset
+- Broader snapshot coverage across examples and diagnostics
 
 ## Milestone 2: Combinational Hardware Features
 
@@ -153,8 +156,8 @@ Planned work:
 
 - `frag.toml`
 - Project-wide builds
+- Project-wide check mode
 - Generated output directories
-- `frag check`
 - `frag build`
 - `frag sim`
 - `frag fmt`
@@ -163,7 +166,7 @@ Planned work:
 Example direction:
 
 ```bash
-frag check
+frag check src/top.frag
 frag build --target verilog
 frag sim examples/counter.frag --ticks 32 --vcd target/counter.vcd
 frag graph src/top.frag --format svg

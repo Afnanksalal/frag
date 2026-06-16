@@ -1,0 +1,32 @@
+flowchart LR
+  sig_sel["sel<br/>input u2"]
+  sig_a["a<br/>input u8"]
+  sig_b["b<br/>input u8"]
+  sig_c["c<br/>input u8"]
+  sig_d["d<br/>input u8"]
+  sig_out["out<br/>output u8"]
+  lit_0["0"]
+  op_1(("=="))
+  sig_sel --> op_1
+  lit_0 --> op_1
+  lit_2["1"]
+  op_3(("=="))
+  sig_sel --> op_3
+  lit_2 --> op_3
+  lit_4["2"]
+  op_5(("=="))
+  sig_sel --> op_5
+  lit_4 --> op_5
+  op_6(("MUX"))
+  op_5 -- sel --> op_6
+  sig_c -- 1 --> op_6
+  sig_d -- 0 --> op_6
+  op_7(("MUX"))
+  op_3 -- sel --> op_7
+  sig_b -- 1 --> op_7
+  op_6 -- 0 --> op_7
+  op_8(("MUX"))
+  op_1 -- sel --> op_8
+  sig_a -- 1 --> op_8
+  op_7 -- 0 --> op_8
+  op_8 --> sig_out

@@ -13,9 +13,10 @@ flowchart TD
     Ast --> Lowering["ir.rs"]
     Analysis --> Lowering
     Lowering --> IR["Netlist IR"]
-    IR --> Verilog["verilog.rs"]
-    IR --> Simulator["simulator.rs"]
-    IR --> Graph["graph.rs"]
+    IR --> Validate["IR validation"]
+    Validate --> Verilog["verilog.rs"]
+    Validate --> Simulator["simulator.rs"]
+    Validate --> Graph["graph.rs"]
 ```
 
 ## Frontend
@@ -79,9 +80,12 @@ flowchart LR
 
 ## IR
 
-`src/ir.rs` lowers the checked AST into a small netlist-style IR.
+`src/ir.rs` lowers the checked AST into a small typed netlist-style IR.
 
-The IR is not Verilog. It is the shared representation consumed by all backends.
+The IR is not Verilog and does not store AST expressions. Assignments and
+constants use `IrExpr`, a typed expression tree with explicit nodes for
+constants, signal references, unary operations, binary operations, and muxes.
+It is the shared representation consumed by all backends.
 
 ```text
 Module HalfAdder
@@ -107,6 +111,19 @@ This separation is important because it keeps future backends possible:
 - visualization
 - optimization passes
 - other HDL targets
+
+The expression-level IR is intentionally still compact. It is sufficient for
+backend emission, simulation, and graph output while leaving room for later
+passes that can canonicalize expressions into flatter gate-level nodes.
+
+`ir::validate` checks lowered IR invariants before backends run:
+
+- unique bindings
+- valid signal and expression widths
+- resolvable expression references
+- legal combinational and sequential assignment targets
+- one-bit input clocks for processes
+- expression node width invariants
 
 ## Backends
 

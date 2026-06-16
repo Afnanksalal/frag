@@ -2,8 +2,8 @@
 //!
 //! This backend emits simple synthesizable-style Verilog from the checked IR.
 
-use crate::ast::{BinaryOp, Edge, Expr, UnaryOp};
-use crate::ir::{IrModule, IrSignalKind};
+use crate::ast::{BinaryOp, Edge, UnaryOp};
+use crate::ir::{IrExpr, IrModule, IrSignalKind};
 
 /// Emit Verilog for an IR module.
 pub fn emit(module: &IrModule) -> String {
@@ -119,19 +119,12 @@ fn edge(edge: Edge) -> &'static str {
 }
 
 /// Emit a Verilog expression.
-pub fn expr(expr: &Expr) -> String {
+pub fn expr(expr: &IrExpr) -> String {
     match expr {
-        Expr::Number { value, .. } => value.to_string(),
-        Expr::Bool { value, .. } => {
-            if *value {
-                "1'b1".to_string()
-            } else {
-                "1'b0".to_string()
-            }
-        }
-        Expr::Signal { name, .. } => name.clone(),
-        Expr::Unary { op, expr, .. } => format!("({}{})", unary(*op), self::expr(expr)),
-        Expr::Binary {
+        IrExpr::Const { value, .. } => value.to_string(),
+        IrExpr::Signal { name, .. } => name.clone(),
+        IrExpr::Unary { op, expr, .. } => format!("({}{})", unary(*op), self::expr(expr)),
+        IrExpr::Binary {
             op, left, right, ..
         } => format!(
             "({} {} {})",
@@ -139,16 +132,16 @@ pub fn expr(expr: &Expr) -> String {
             binary(*op),
             self::expr(right)
         ),
-        Expr::Conditional {
-            condition,
-            then_expr,
-            else_expr,
+        IrExpr::Mux {
+            select,
+            when_true,
+            when_false,
             ..
         } => format!(
             "({} ? {} : {})",
-            self::expr(condition),
-            self::expr(then_expr),
-            self::expr(else_expr)
+            self::expr(select),
+            self::expr(when_true),
+            self::expr(when_false)
         ),
     }
 }
