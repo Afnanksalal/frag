@@ -1,0 +1,26 @@
+flowchart LR
+  sig_data["data<br/>input u8"]
+  sig_high["high<br/>output u4"]
+  sig_low["low<br/>output u4"]
+  sig_top["top<br/>output bit"]
+  sig_bit2["bit2<br/>output bit"]
+  sig_masked_low["masked_low<br/>output u4"]
+  const_mask["mask<br/>const u8 = 15"]
+  op_0(("SLICE 7:4"))
+  sig_data --> op_0
+  op_0 --> sig_high
+  op_1(("SLICE 3:0"))
+  sig_data --> op_1
+  op_1 --> sig_low
+  op_2(("BIT 7"))
+  sig_data --> op_2
+  op_2 --> sig_top
+  op_3(("BIT 2"))
+  sig_data --> op_3
+  op_3 --> sig_bit2
+  op_4(("&"))
+  sig_data --> op_4
+  const_mask --> op_4
+  op_5(("SLICE 3:0"))
+  op_4 --> op_5
+  op_5 --> sig_masked_low

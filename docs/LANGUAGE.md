@@ -119,6 +119,28 @@ Binary, from high to low precedence:
 ||
 ```
 
+## Bit Selection
+
+Frag supports Verilog-style indexing and descending inclusive slicing:
+
+```frag
+top = data[7];
+high = data[7:4];
+low = data[3:0];
+masked_low = (data & mask)[3:0];
+```
+
+Rules:
+
+- `expr[index]` produces a one-bit value.
+- `expr[msb:lsb]` produces `msb - lsb + 1` bits.
+- Slice ranges must be descending (`msb >= lsb`).
+- Index and slice bounds must be numeric literals.
+- Bounds must be inside the selected expression width.
+
+The Verilog backend emits direct part-selects for named values and shift/mask
+expressions for compound selected expressions.
+
 ## Conditional Expressions
 
 Frag supports mux-friendly conditional expressions:

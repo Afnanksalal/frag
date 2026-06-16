@@ -123,6 +123,12 @@ pub fn expr(expr: &IrExpr) -> String {
     match expr {
         IrExpr::Const { value, .. } => value.to_string(),
         IrExpr::Signal { name, .. } => name.clone(),
+        IrExpr::Slice {
+            expr,
+            msb,
+            lsb,
+            width,
+        } => slice_expr(expr, *msb, *lsb, *width),
         IrExpr::Unary { op, expr, .. } => format!("({}{})", unary(*op), self::expr(expr)),
         IrExpr::Binary {
             op, left, right, ..
@@ -145,6 +151,31 @@ pub fn expr(expr: &IrExpr) -> String {
         ),
         IrExpr::Case { selector, arms, .. } => case_expr(selector, arms),
     }
+}
+
+fn slice_expr(expr: &IrExpr, msb: u32, lsb: u32, width: u32) -> String {
+    if let IrExpr::Signal { .. } = expr {
+        if msb == lsb {
+            format!("{}[{}]", self::expr(expr), msb)
+        } else {
+            format!("{}[{}:{}]", self::expr(expr), msb, lsb)
+        }
+    } else if msb == lsb {
+        compound_bit_select(&self::expr(expr), lsb)
+    } else {
+        let expr = self::expr(expr);
+        let bits = (lsb..=msb)
+            .rev()
+            .map(|bit| compound_bit_select(&expr, bit))
+            .collect::<Vec<_>>()
+            .join(", ");
+        debug_assert_eq!(width, msb - lsb + 1);
+        format!("{{{}}}", bits)
+    }
+}
+
+fn compound_bit_select(expr: &str, index: u32) -> String {
+    format!("((({} >> {}) & 1) != 0)", expr, index)
 }
 
 fn case_expr(selector: &IrExpr, arms: &[crate::ir::IrCaseArm]) -> String {

@@ -5,10 +5,11 @@
 
 use crate::ast::{BinaryOp, Edge, UnaryOp};
 use crate::ir::{IrExpr, IrModule};
+use std::collections::BTreeSet;
 
 /// Emit a Graphviz DOT graph for an IR module.
 pub fn emit_dot(module: &IrModule) -> String {
-    let mut graph = DotGraph::default();
+    let mut graph = DotGraph::new(constant_names(module));
     graph.line("digraph Frag {");
     graph.line("  rankdir=LR;");
     graph.line("  node [fontname=\"Arial\"];\n");
@@ -67,7 +68,7 @@ pub fn emit_dot(module: &IrModule) -> String {
 
 /// Emit a Mermaid flowchart for an IR module.
 pub fn emit_mermaid(module: &IrModule) -> String {
-    let mut graph = MermaidGraph::default();
+    let mut graph = MermaidGraph::new(constant_names(module));
     graph.line("flowchart LR");
 
     for signal in &module.signals {
@@ -130,9 +131,17 @@ pub fn emit_mermaid(module: &IrModule) -> String {
 struct DotGraph {
     lines: Vec<String>,
     next: usize,
+    constants: BTreeSet<String>,
 }
 
 impl DotGraph {
+    fn new(constants: BTreeSet<String>) -> Self {
+        Self {
+            constants,
+            ..Self::default()
+        }
+    }
+
     fn line(&mut self, line: &str) {
         self.lines.push(line.to_string());
     }
@@ -143,8 +152,18 @@ impl DotGraph {
 
     fn expr_node(&mut self, expr: &IrExpr) -> String {
         match expr {
-            IrExpr::Signal { name, .. } => format!("sig:{}", name),
+            IrExpr::Signal { name, .. } => self.binding_node(name),
             IrExpr::Const { value, .. } => self.leaf(&value.to_string()),
+            IrExpr::Slice { expr, msb, lsb, .. } => {
+                let input = self.expr_node(expr);
+                let node = if msb == lsb {
+                    self.op_node(&format!("BIT {}", msb))
+                } else {
+                    self.op_node(&format!("SLICE {}:{}", msb, lsb))
+                };
+                self.line(&format!("  \"{}\" -> \"{}\";", input, node));
+                node
+            }
             IrExpr::Unary { op, expr, .. } => {
                 let input = self.expr_node(expr);
                 let node = self.op_node(op_name_unary(*op));
@@ -231,15 +250,31 @@ impl DotGraph {
         ));
         node
     }
+
+    fn binding_node(&self, name: &str) -> String {
+        if self.constants.contains(name) {
+            format!("const:{}", name)
+        } else {
+            format!("sig:{}", name)
+        }
+    }
 }
 
 #[derive(Default)]
 struct MermaidGraph {
     lines: Vec<String>,
     next: usize,
+    constants: BTreeSet<String>,
 }
 
 impl MermaidGraph {
+    fn new(constants: BTreeSet<String>) -> Self {
+        Self {
+            constants,
+            ..Self::default()
+        }
+    }
+
     fn line(&mut self, line: &str) {
         self.lines.push(line.to_string());
     }
@@ -250,8 +285,18 @@ impl MermaidGraph {
 
     fn expr_node(&mut self, expr: &IrExpr) -> String {
         match expr {
-            IrExpr::Signal { name, .. } => mermaid_id(&format!("sig_{}", name)),
+            IrExpr::Signal { name, .. } => self.binding_node(name),
             IrExpr::Const { value, .. } => self.leaf(&value.to_string()),
+            IrExpr::Slice { expr, msb, lsb, .. } => {
+                let input = self.expr_node(expr);
+                let node = if msb == lsb {
+                    self.op_node(&format!("BIT {}", msb))
+                } else {
+                    self.op_node(&format!("SLICE {}:{}", msb, lsb))
+                };
+                self.line(&format!("  {} --> {}", input, node));
+                node
+            }
             IrExpr::Unary { op, expr, .. } => {
                 let input = self.expr_node(expr);
                 let node = self.op_node(op_name_unary(*op));
@@ -319,6 +364,22 @@ impl MermaidGraph {
         self.line(&format!("  {}((\"{}\"))", node, mermaid_label(label)));
         node
     }
+
+    fn binding_node(&self, name: &str) -> String {
+        if self.constants.contains(name) {
+            mermaid_id(&format!("const_{}", name))
+        } else {
+            mermaid_id(&format!("sig_{}", name))
+        }
+    }
+}
+
+fn constant_names(module: &IrModule) -> BTreeSet<String> {
+    module
+        .constants
+        .iter()
+        .map(|constant| constant.name.clone())
+        .collect()
 }
 
 fn width(width: u32) -> String {
@@ -340,6 +401,13 @@ fn expr_label(expr: &IrExpr) -> String {
     match expr {
         IrExpr::Const { value, .. } => value.to_string(),
         IrExpr::Signal { name, .. } => name.clone(),
+        IrExpr::Slice { expr, msb, lsb, .. } => {
+            if msb == lsb {
+                format!("{}[{}]", expr_label(expr), msb)
+            } else {
+                format!("{}[{}:{}]", expr_label(expr), msb, lsb)
+            }
+        }
         IrExpr::Unary { op, expr, .. } => format!("{}{}", op_name_unary(*op), expr_label(expr)),
         IrExpr::Binary {
             op, left, right, ..

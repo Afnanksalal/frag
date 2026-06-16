@@ -105,6 +105,17 @@ pub enum IrExpr {
         /// Referenced value width.
         width: u32,
     },
+    /// Bit selection from a vector expression.
+    Slice {
+        /// Selected expression.
+        expr: Box<IrExpr>,
+        /// Most significant selected bit.
+        msb: u32,
+        /// Least significant selected bit.
+        lsb: u32,
+        /// Expression result width.
+        width: u32,
+    },
     /// Unary operation.
     Unary {
         /// Operator.
@@ -153,6 +164,7 @@ impl IrExpr {
         match self {
             IrExpr::Const { width, .. }
             | IrExpr::Signal { width, .. }
+            | IrExpr::Slice { width, .. }
             | IrExpr::Unary { width, .. }
             | IrExpr::Binary { width, .. }
             | IrExpr::Mux { width, .. }
@@ -325,6 +337,18 @@ fn lower_expr(expr: &Expr, symbols: &BTreeMap<String, Symbol>) -> IrExpr {
             name: name.clone(),
             width,
         },
+        Expr::Index { expr, index, .. } => IrExpr::Slice {
+            expr: Box::new(lower_expr(expr, symbols)),
+            msb: *index,
+            lsb: *index,
+            width,
+        },
+        Expr::Slice { expr, msb, lsb, .. } => IrExpr::Slice {
+            expr: Box::new(lower_expr(expr, symbols)),
+            msb: *msb,
+            lsb: *lsb,
+            width,
+        },
         Expr::Unary { op, expr, .. } => IrExpr::Unary {
             op: *op,
             expr: Box::new(lower_expr(expr, symbols)),
@@ -463,6 +487,29 @@ fn validate_expr(expr: &IrExpr, bindings: &BTreeMap<String, IrBinding>) -> Resul
                     name, width, binding.width
                 )));
             }
+        }
+        IrExpr::Slice {
+            expr,
+            msb,
+            lsb,
+            width,
+        } => {
+            validate_expr(expr, bindings)?;
+            if msb < lsb {
+                return Err(Diagnostic::new(format!(
+                    "IR slice range must be descending; got [{}:{}]",
+                    msb, lsb
+                )));
+            }
+            if *msb >= expr.width() {
+                return Err(Diagnostic::new(format!(
+                    "IR slice range [{}:{}] exceeds expression width {}",
+                    msb,
+                    lsb,
+                    expr.width()
+                )));
+            }
+            validate_expected_width(*width, msb - lsb + 1, "slice expression")?;
         }
         IrExpr::Unary { op, expr, width } => {
             validate_expr(expr, bindings)?;
@@ -677,6 +724,16 @@ fn write_assignment(
             writeln!(f, "{}  Input: {}", indent, expr_inline(expr))?;
             writeln!(f, "{}  Output: {}", indent, assignment.target)
         }
+        IrExpr::Slice { expr, msb, lsb, .. } => {
+            writeln!(f, "{}Gate SLICE", indent)?;
+            writeln!(f, "{}  Input: {}", indent, expr_inline(expr))?;
+            if msb == lsb {
+                writeln!(f, "{}  Index: {}", indent, msb)?;
+            } else {
+                writeln!(f, "{}  Range: {}:{}", indent, msb, lsb)?;
+            }
+            writeln!(f, "{}  Output: {}", indent, assignment.target)
+        }
         IrExpr::Mux {
             select,
             when_true,
@@ -721,6 +778,13 @@ pub fn expr_inline(expr: &IrExpr) -> String {
     match expr {
         IrExpr::Const { value, .. } => value.to_string(),
         IrExpr::Signal { name, .. } => name.clone(),
+        IrExpr::Slice { expr, msb, lsb, .. } => {
+            if msb == lsb {
+                format!("{}[{}]", expr_inline(expr), msb)
+            } else {
+                format!("{}[{}:{}]", expr_inline(expr), msb, lsb)
+            }
+        }
         IrExpr::Unary { op, expr, .. } => format!("({}{})", op, expr_inline(expr)),
         IrExpr::Binary {
             op, left, right, ..

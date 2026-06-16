@@ -84,9 +84,10 @@ flowchart LR
 
 The IR is not Verilog and does not store AST expressions. Assignments and
 constants use `IrExpr`, a typed expression tree with explicit nodes for
-constants, signal references, unary operations, binary operations, and muxes.
-Case expressions are represented explicitly as typed IR case nodes. The IR is
-the shared representation consumed by all backends.
+constants, signal references, bit selections, unary operations, binary
+operations, muxes, and case expressions. Bit selections and case expressions
+are represented explicitly as typed IR nodes. The IR is the shared
+representation consumed by all backends.
 
 ```text
 Module HalfAdder

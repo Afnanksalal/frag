@@ -41,6 +41,13 @@ Implemented language and tooling:
 - Combinational assignments
 - Sequential `on rising(clk)` and `on falling(clk)` processes
 - Arithmetic, comparison, logical, bitwise, and shift operators
+- Bit indexing and descending inclusive slicing:
+
+```frag
+top = data[7];
+high = data[7:4];
+```
+
 - Conditional expressions:
 
 ```frag
@@ -85,8 +92,6 @@ single-module model.
 
 Planned work:
 
-- Bit indexing
-- Bit slicing
 - Concatenation
 - Explicit zero/sign extension helpers
 - Constant folding pass over IR

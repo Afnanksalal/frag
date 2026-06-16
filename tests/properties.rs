@@ -42,6 +42,24 @@ module ShiftedNot {
     }
 }
 
+#[test]
+fn byte_slices_match_reference_model_for_all_inputs() {
+    let source = include_str!("../examples/nibble_splitter.frag");
+    let compiled = compile(source).expect("nibble splitter should compile");
+
+    for data in 0..=255 {
+        let mut inputs = BTreeMap::new();
+        inputs.insert("data".to_string(), data);
+
+        let row = simulate_one(&compiled.ir, inputs);
+        assert_eq!(row["high"], (data >> 4) & 0xf);
+        assert_eq!(row["low"], data & 0xf);
+        assert_eq!(row["top"], (data >> 7) & 1);
+        assert_eq!(row["bit2"], (data >> 2) & 1);
+        assert_eq!(row["masked_low"], data & 0xf);
+    }
+}
+
 fn simulate_one(
     module: &frag_compiler::ir::IrModule,
     inputs: BTreeMap<String, u128>,

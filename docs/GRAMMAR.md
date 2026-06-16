@@ -75,7 +75,8 @@ comparison       = shift, { ("<" | "<=" | ">" | ">="), shift } ;
 shift            = term, { ("<<" | ">>"), term } ;
 term             = factor, { ("+" | "-"), factor } ;
 factor           = unary, { ("*" | "/" | "%"), unary } ;
-unary            = ("!" | "~" | "-"), unary | primary ;
+unary            = ("!" | "~" | "-"), unary | postfix ;
+postfix          = primary, { bit_selection } ;
 ```
 
 ## Primary Expressions
@@ -99,6 +100,10 @@ case_expression = "case", expression, "{",
 
 case_arm = expression, "=>", expression
          | "else", "=>", expression ;
+
+bit_selection = "[", number, "]"
+              | "[", number, ":", number, "]" ;
 ```
 
 Case expressions require exactly one `else` arm, and it must be last.
+Slice ranges must be descending and inside the selected expression width.

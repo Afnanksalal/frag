@@ -301,6 +301,8 @@ fn token_label(kind: &TokenKind) -> String {
         TokenKind::RightBrace => "RightBrace".to_string(),
         TokenKind::LeftParen => "LeftParen".to_string(),
         TokenKind::RightParen => "RightParen".to_string(),
+        TokenKind::LeftBracket => "LeftBracket".to_string(),
+        TokenKind::RightBracket => "RightBracket".to_string(),
         TokenKind::Equal => "Equal".to_string(),
         TokenKind::FatArrow => "FatArrow".to_string(),
         TokenKind::Plus => "Plus".to_string(),

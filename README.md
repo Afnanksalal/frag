@@ -42,6 +42,7 @@ Supported:
 - Combinational assignments
 - Sequential `on rising(clk)` and `on falling(clk)` processes
 - Arithmetic, comparison, logical, bitwise, and shift operators
+- Bit indexing and slicing with `value[3]` and `value[7:4]`
 - `if condition { a } else { b }` conditional expressions
 - `case selector { pattern => value, else => value }` expressions
 - Source-span diagnostics
@@ -72,7 +73,6 @@ Current limits:
 - No loops or generics
 - No signed arithmetic
 - No reset syntax
-- No bit indexing or slicing
 
 ## Install
 
@@ -199,6 +199,15 @@ out = case sel {
 };
 ```
 
+Bit selection:
+
+```frag
+high = data[7:4];
+low = data[3:0];
+top = data[7];
+masked_low = (data & mask)[3:0];
+```
+
 ## Verification
 
 Rust-only checks:
@@ -268,6 +277,7 @@ The repository includes these circuits:
 - Full adder
 - Half adder
 - Majority gate
+- Nibble splitter
 - XOR gate
 
 ## Documentation

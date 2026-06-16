@@ -279,6 +279,42 @@ fn ir_validation_rejects_case_pattern_width_invariants() {
 }
 
 #[test]
+fn ir_validation_rejects_slice_width_invariants() {
+    let module = IrModule {
+        name: "BadSliceIr".to_string(),
+        signals: vec![
+            IrSignal {
+                name: "data".to_string(),
+                kind: IrSignalKind::Input,
+                width: 4,
+            },
+            IrSignal {
+                name: "out".to_string(),
+                kind: IrSignalKind::Output,
+                width: 1,
+            },
+        ],
+        constants: Vec::new(),
+        combinational: vec![IrAssign {
+            target: "out".to_string(),
+            expr: IrExpr::Slice {
+                expr: Box::new(IrExpr::Signal {
+                    name: "data".to_string(),
+                    width: 4,
+                }),
+                msb: 4,
+                lsb: 4,
+                width: 1,
+            },
+        }],
+        processes: Vec::new(),
+    };
+
+    let error = ir::validate(&module).expect_err("out-of-range IR slice should fail");
+    assert!(error.message.contains("slice range"));
+}
+
+#[test]
 fn conditional_expression_rejects_unsafe_branch_width() {
     let source = r#"
 module BadConditionalWidth {
@@ -441,6 +477,114 @@ module CaseElseOrder {
 
     let error = compile(source).expect_err("case arm after else should fail");
     assert!(error.message.contains("last case arm"));
+}
+
+#[test]
+fn slice_and_index_expressions_lower_and_simulate() {
+    let source = include_str!("../examples/nibble_splitter.frag");
+    let compiled = compile(source).expect("nibble splitter should compile");
+
+    let high = compiled
+        .ir
+        .combinational
+        .iter()
+        .find(|assignment| assignment.target == "high")
+        .expect("high assignment exists");
+    let IrExpr::Slice {
+        msb, lsb, width, ..
+    } = &high.expr
+    else {
+        panic!("high should lower to a slice expression");
+    };
+    assert_eq!((*msb, *lsb, *width), (7, 4, 4));
+
+    let top = compiled
+        .ir
+        .combinational
+        .iter()
+        .find(|assignment| assignment.target == "top")
+        .expect("top assignment exists");
+    let IrExpr::Slice {
+        msb, lsb, width, ..
+    } = &top.expr
+    else {
+        panic!("top should lower to a one-bit slice expression");
+    };
+    assert_eq!((*msb, *lsb, *width), (7, 7, 1));
+
+    let ir_text = compiled.ir.to_string();
+    assert!(ir_text.contains("Range: 7:4"));
+    assert!(ir_text.contains("Index: 7"));
+
+    let verilog = verilog::emit(&compiled.ir);
+    assert!(verilog.contains("assign high = data[7:4];"));
+    assert!(verilog.contains("assign top = data[7];"));
+    assert!(verilog.contains(
+        "assign masked_low = {((((data & mask) >> 3) & 1) != 0), ((((data & mask) >> 2) & 1) != 0), ((((data & mask) >> 1) & 1) != 0), ((((data & mask) >> 0) & 1) != 0)};"
+    ));
+
+    let dot = graph::emit_dot(&compiled.ir);
+    assert!(dot.contains("SLICE 7:4"));
+    assert!(dot.contains("BIT 7"));
+
+    let mut inputs = BTreeMap::new();
+    inputs.insert("data".to_string(), 0b1011_0110);
+    let result = simulator::run(&compiled.ir, &SimOptions { ticks: 1, inputs })
+        .expect("slices should simulate");
+    let SimulationResult::TruthTable(table) = result else {
+        panic!("nibble splitter should produce a truth table");
+    };
+    let row = &table.rows[0];
+    assert_eq!(row["high"], 0b1011);
+    assert_eq!(row["low"], 0b0110);
+    assert_eq!(row["top"], 1);
+    assert_eq!(row["bit2"], 1);
+    assert_eq!(row["masked_low"], 0b0110);
+}
+
+#[test]
+fn slice_expression_rejects_out_of_range_index() {
+    let source = r#"
+module BadIndex {
+    input data: u4;
+    output out: bit;
+
+    out = data[4];
+}
+"#;
+
+    let error = compile(source).expect_err("out-of-range index should fail");
+    assert!(error.message.contains("out of range"));
+}
+
+#[test]
+fn slice_expression_rejects_reversed_ranges() {
+    let source = r#"
+module BadSlice {
+    input data: u4;
+    output out: u4;
+
+    out = data[0:3];
+}
+"#;
+
+    let error = compile(source).expect_err("reversed slice should fail");
+    assert!(error.message.contains("descending"));
+}
+
+#[test]
+fn slice_expression_rejects_width_mismatch() {
+    let source = r#"
+module BadSliceWidth {
+    input data: u4;
+    output out: bit;
+
+    out = data[3:0];
+}
+"#;
+
+    let error = compile(source).expect_err("wide slice into bit should fail");
+    assert!(error.message.contains("Width mismatch"));
 }
 
 #[test]

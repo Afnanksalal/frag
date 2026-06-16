@@ -225,6 +225,45 @@ fn check_expr(expr: &Expr, symbols: &BTreeMap<String, Symbol>) -> Result<()> {
                 Err(Diagnostic::at(*span, format!("Unknown signal `{}`", name)))
             }
         }
+        Expr::Index { expr, index, span } => {
+            check_expr(expr, symbols)?;
+            let width = expr_width(expr, symbols);
+            if *index >= width {
+                return Err(Diagnostic::at(
+                    *span,
+                    format!(
+                        "Bit index {} is out of range for {} bit expression",
+                        index, width
+                    ),
+                ));
+            }
+            Ok(())
+        }
+        Expr::Slice {
+            expr,
+            msb,
+            lsb,
+            span,
+        } => {
+            check_expr(expr, symbols)?;
+            let width = expr_width(expr, symbols);
+            if msb < lsb {
+                return Err(Diagnostic::at(
+                    *span,
+                    format!("Slice range must be descending; got [{}:{}]", msb, lsb),
+                ));
+            }
+            if *msb >= width {
+                return Err(Diagnostic::at(
+                    *span,
+                    format!(
+                        "Slice range [{}:{}] is out of range for {} bit expression",
+                        msb, lsb, width
+                    ),
+                ));
+            }
+            Ok(())
+        }
         Expr::Unary { expr, .. } => check_expr(expr, symbols),
         Expr::Binary { left, right, .. } => {
             check_expr(left, symbols)?;
@@ -337,6 +376,14 @@ pub fn expr_width(expr: &Expr, symbols: &BTreeMap<String, Symbol>) -> u32 {
         Expr::Number { value, .. } => min_bits(*value),
         Expr::Bool { .. } => 1,
         Expr::Signal { name, .. } => symbols.get(name).map(|symbol| symbol.width).unwrap_or(1),
+        Expr::Index { .. } => 1,
+        Expr::Slice { msb, lsb, .. } => {
+            if msb >= lsb {
+                msb - lsb + 1
+            } else {
+                1
+            }
+        }
         Expr::Unary { op, expr, .. } => match op {
             UnaryOp::LogicNot => 1,
             UnaryOp::BitNot | UnaryOp::Neg => expr_width(expr, symbols),
@@ -382,6 +429,15 @@ fn eval_unsized_const(expr: &Expr) -> Option<u128> {
         Expr::Number { value, .. } => Some(*value),
         Expr::Bool { value, .. } => Some(if *value { 1 } else { 0 }),
         Expr::Signal { .. } => None,
+        Expr::Index { expr, index, .. } => {
+            let value = eval_unsized_const(expr)?;
+            Some((value >> index) & 1)
+        }
+        Expr::Slice { expr, msb, lsb, .. } => {
+            let value = eval_unsized_const(expr)?;
+            let width = msb.checked_sub(*lsb)? + 1;
+            Some((value >> lsb) & value_mask(width))
+        }
         Expr::Unary { op, expr, .. } => {
             let value = eval_unsized_const(expr)?;
             match op {
@@ -588,6 +644,7 @@ fn collect_refs(expr: &Expr, refs: &mut Vec<SignalRef>) {
             name: name.clone(),
             span: *span,
         }),
+        Expr::Index { expr, .. } | Expr::Slice { expr, .. } => collect_refs(expr, refs),
         Expr::Unary { expr, .. } => collect_refs(expr, refs),
         Expr::Binary { left, right, .. } => {
             collect_refs(left, refs);
@@ -613,6 +670,14 @@ fn collect_refs(expr: &Expr, refs: &mut Vec<SignalRef>) {
             }
         }
         Expr::Number { .. } | Expr::Bool { .. } => {}
+    }
+}
+
+fn value_mask(width: u32) -> u128 {
+    if width >= 128 {
+        u128::MAX
+    } else {
+        (1u128 << width) - 1
     }
 }
 

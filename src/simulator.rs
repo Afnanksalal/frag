@@ -298,6 +298,7 @@ fn eval_expr(expr: &IrExpr, values: &BTreeMap<String, u128>) -> u128 {
     let value = match expr {
         IrExpr::Const { value, .. } => *value,
         IrExpr::Signal { name, .. } => values.get(name).copied().unwrap_or(0),
+        IrExpr::Slice { expr, lsb, .. } => eval_expr(expr, values) >> lsb,
         IrExpr::Unary { op, expr, .. } => {
             let value = eval_expr(expr, values);
             match op {

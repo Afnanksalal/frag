@@ -1,0 +1,31 @@
+Module NibbleSplitter
+Signals
+  input data: u8
+  output high: u4
+  output low: u4
+  output top: bit
+  output bit2: bit
+  output masked_low: u4
+Constants
+  mask: u8 = 15
+Combinational
+  Gate SLICE
+    Input: data
+    Range: 7:4
+    Output: high
+  Gate SLICE
+    Input: data
+    Range: 3:0
+    Output: low
+  Gate SLICE
+    Input: data
+    Index: 7
+    Output: top
+  Gate SLICE
+    Input: data
+    Index: 2
+    Output: bit2
+  Gate SLICE
+    Input: (data & mask)
+    Range: 3:0
+    Output: masked_low

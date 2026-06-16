@@ -133,6 +133,26 @@ pub enum Expr {
         /// Source span covering the reference.
         span: Span,
     },
+    /// One-bit selection from a bit-vector expression.
+    Index {
+        /// Selected expression.
+        expr: Box<Expr>,
+        /// Zero-based bit index.
+        index: u32,
+        /// Source span covering the expression.
+        span: Span,
+    },
+    /// Inclusive descending bit slice from a bit-vector expression.
+    Slice {
+        /// Selected expression.
+        expr: Box<Expr>,
+        /// Most significant selected bit.
+        msb: u32,
+        /// Least significant selected bit.
+        lsb: u32,
+        /// Source span covering the expression.
+        span: Span,
+    },
     /// Unary expression.
     Unary {
         /// Operator.
@@ -182,6 +202,8 @@ impl Expr {
             Expr::Number { span, .. }
             | Expr::Bool { span, .. }
             | Expr::Signal { span, .. }
+            | Expr::Index { span, .. }
+            | Expr::Slice { span, .. }
             | Expr::Unary { span, .. }
             | Expr::Binary { span, .. }
             | Expr::Conditional { span, .. }

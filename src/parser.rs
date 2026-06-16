@@ -362,7 +362,34 @@ impl Parser {
             return Ok(unary(UnaryOp::Neg, token.span.start, expr));
         }
 
-        self.parse_primary()
+        self.parse_postfix()
+    }
+
+    fn parse_postfix(&mut self) -> Result<Expr> {
+        let mut expr = self.parse_primary()?;
+        while self.match_simple(&TokenKind::LeftBracket) {
+            let start = expr.span().start;
+            let (first, _) = self.expect_index_literal("slice/index bound")?;
+            if self.match_simple(&TokenKind::Colon) {
+                let (lsb, _) = self.expect_index_literal("slice lower bound")?;
+                let end = self.expect_simple(TokenKind::RightBracket, "`]`")?.span.end;
+                expr = Expr::Slice {
+                    expr: Box::new(expr),
+                    msb: first,
+                    lsb,
+                    span: Span::new(start, end),
+                };
+            } else {
+                let end = self.expect_simple(TokenKind::RightBracket, "`]`")?.span.end;
+                expr = Expr::Index {
+                    expr: Box::new(expr),
+                    index: first,
+                    span: Span::new(start, end),
+                };
+            }
+        }
+
+        Ok(expr)
     }
 
     fn parse_primary(&mut self) -> Result<Expr> {
@@ -478,6 +505,23 @@ impl Parser {
                 format!("Expected identifier, found {}", other),
             )),
         }
+    }
+
+    fn expect_index_literal(&mut self, context: &str) -> Result<(u32, Span)> {
+        let token = self.bump();
+        let TokenKind::Number(value) = token.kind else {
+            return Err(Diagnostic::at(
+                token.span,
+                format!("Expected numeric {}, found {}", context, token.kind),
+            ));
+        };
+        let value = u32::try_from(value).map_err(|_| {
+            Diagnostic::at(
+                token.span,
+                format!("Numeric {} is too large for a bit-vector index", context),
+            )
+        })?;
+        Ok((value, token.span))
     }
 
     fn expect_simple(&mut self, kind: TokenKind, expected: &str) -> Result<Token> {

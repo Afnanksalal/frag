@@ -70,6 +70,36 @@ fn mux4_case_mermaid_matches_golden() {
     );
 }
 
+#[test]
+fn nibble_splitter_ir_matches_golden() {
+    let source = include_str!("../examples/nibble_splitter.frag");
+    let compiled = compile(source).expect("nibble_splitter should compile");
+    assert_eq!(
+        normalize(&compiled.ir.to_string()),
+        normalize(include_str!("golden/nibble_splitter.ir"))
+    );
+}
+
+#[test]
+fn nibble_splitter_verilog_matches_golden() {
+    let source = include_str!("../examples/nibble_splitter.frag");
+    let compiled = compile(source).expect("nibble_splitter should compile");
+    assert_eq!(
+        normalize(&verilog::emit(&compiled.ir)),
+        normalize(include_str!("golden/nibble_splitter.v"))
+    );
+}
+
+#[test]
+fn nibble_splitter_mermaid_matches_golden() {
+    let source = include_str!("../examples/nibble_splitter.frag");
+    let compiled = compile(source).expect("nibble_splitter should compile");
+    assert_eq!(
+        normalize(&graph::emit_mermaid(&compiled.ir)),
+        normalize(include_str!("golden/nibble_splitter.mmd"))
+    );
+}
+
 fn normalize(text: &str) -> String {
     text.replace("\r\n", "\n")
 }

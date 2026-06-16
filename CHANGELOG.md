@@ -8,6 +8,21 @@ This project follows semantic versioning once the language stabilizes. Until the
 
 No unreleased changes yet.
 
+## v0.1.0-alpha.4 - 2026-06-16
+
+### Added
+
+- Bit indexing with `expr[index]`
+- Descending inclusive bit slicing with `expr[msb:lsb]`
+- `nibble_splitter.frag` example
+- Golden IR, Verilog, and Mermaid tests for bit selection
+- Exhaustive simulator coverage for byte slicing behavior
+
+### Changed
+
+- DOT and Mermaid graph output now resolve constant references to constant nodes
+- Verilog emission uses direct part-selects for named values and shift/mask emission for sliced expressions
+
 ## v0.1.0-alpha.3 - 2026-06-16
 
 ### Changed
