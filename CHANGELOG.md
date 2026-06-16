@@ -12,7 +12,7 @@ This project follows semantic versioning once the language stabilizes. Until the
 - Verilog, simulator, DOT, and Mermaid backends now consume IR expressions directly
 - Simulator masks intermediate expression results to their IR widths
 - Architecture documentation now describes the typed IR contract
-- CI and release workflows opt into Node 24 for JavaScript actions
+- CI and release workflows use current GitHub action majors to avoid Node 20 deprecation warnings
 
 ### Added
 
