@@ -139,6 +139,17 @@ pub fn expr(expr: &Expr) -> String {
             binary(*op),
             self::expr(right)
         ),
+        Expr::Conditional {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => format!(
+            "({} ? {} : {})",
+            self::expr(condition),
+            self::expr(then_expr),
+            self::expr(else_expr)
+        ),
     }
 }
 

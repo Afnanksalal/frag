@@ -142,6 +142,17 @@ pub enum Expr {
         /// Source span covering the expression.
         span: Span,
     },
+    /// Conditional mux expression.
+    Conditional {
+        /// Condition expression; nonzero selects the `then` value.
+        condition: Box<Expr>,
+        /// Value selected when the condition is nonzero.
+        then_expr: Box<Expr>,
+        /// Value selected when the condition is zero.
+        else_expr: Box<Expr>,
+        /// Source span covering the expression.
+        span: Span,
+    },
 }
 
 impl Expr {
@@ -152,7 +163,8 @@ impl Expr {
             | Expr::Bool { span, .. }
             | Expr::Signal { span, .. }
             | Expr::Unary { span, .. }
-            | Expr::Binary { span, .. } => *span,
+            | Expr::Binary { span, .. }
+            | Expr::Conditional { span, .. } => *span,
         }
     }
 }

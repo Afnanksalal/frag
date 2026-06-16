@@ -1,48 +1,43 @@
-# Frag v0.1.0-alpha.1
+# Frag v0.1.0-alpha.2
 
-This is the first HDL-focused alpha release of Frag.
-
-Frag is a tiny Hardware Description Language compiler written in Rust. This release demonstrates the full teaching pipeline:
-
-```text
-Frag source -> Lexer -> Parser -> AST -> Semantic analysis -> IR -> Verilog / Simulator / Graph
-```
+This alpha release adds conditional expressions and updates the project
+documentation to match the current compiler surface.
 
 ## Highlights
 
-- Parse small Frag HDL modules
-- Check signal declarations, widths, assignment targets, and dependency cycles
-- Lower checked modules into a netlist-style IR
-- Generate Verilog accepted by Icarus Verilog and Verilator
-- Simulate combinational truth tables and simple sequential tick traces
-- Emit VCD waveforms
-- Generate Graphviz DOT and Mermaid circuit graphs
-- Includes 13 example circuits
-
-## Install
-
-Download the archive for your platform from the release assets, extract it, and run:
-
-```bash
-frag --help
-```
-
-Or build from source:
-
-```bash
-cargo install --path .
-```
+- Added `if condition { then_expr } else { else_expr }` conditional expressions
+- Lowered conditional expressions as MUX nodes in the IR
+- Emitted Verilog ternary expressions for conditionals
+- Added simulator support for conditional expression evaluation
+- Added DOT and Mermaid graph output for MUX nodes
+- Added `examples/mux4_if.frag`
+- Added tests for conditional expression lowering, simulation, graph output,
+  Verilog output, and width checking
+- Reworked README and roadmap documentation into a concise technical format
 
 ## Example
 
-```bash
-frag run examples/half_adder.frag
-frag verilog examples/half_adder.frag
-frag graph examples/half_adder.frag --format mermaid
+```frag
+module Mux2If {
+    input sel: bit;
+    input a: u8;
+    input b: u8;
+
+    output out: u8;
+
+    out = if sel { a } else { b };
+}
 ```
 
-## Alpha Notice
+Generated Verilog:
 
-This is an early alpha. The compiler is usable for small examples and demos, but the language is not stable yet.
+```verilog
+assign out = (sel ? a : b);
+```
 
-Major missing features include module instantiation, `if` / `case`, reset syntax, arrays, memories, and signed arithmetic.
+## Compatibility
+
+Frag remains pre-1.0. The language and CLI may change between alpha releases.
+
+Major missing features still include module instantiation, `case`, reset
+syntax, arrays, memories, signed arithmetic, and bit indexing/slicing.

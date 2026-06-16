@@ -337,6 +337,18 @@ fn eval_expr(expr: &Expr, values: &BTreeMap<String, u128>) -> u128 {
                 BinaryOp::LogicOr => ((left != 0) || (right != 0)) as u128,
             }
         }
+        Expr::Conditional {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            if eval_expr(condition, values) != 0 {
+                eval_expr(then_expr, values)
+            } else {
+                eval_expr(else_expr, values)
+            }
+        }
     }
 }
 

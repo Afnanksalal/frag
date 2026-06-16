@@ -2,7 +2,8 @@
 
 Thanks for your interest in Frag.
 
-Frag is an educational compiler, so clarity matters as much as correctness. Prefer readable code and focused changes over clever abstractions.
+Frag is a small compiler codebase, so clarity matters as much as correctness.
+Prefer readable code and focused changes over broad abstractions.
 
 ## Development Setup
 

@@ -1,5 +1,5 @@
 use frag_compiler::simulator::{SimOptions, SimulationResult};
-use frag_compiler::{compile, simulator, verilog};
+use frag_compiler::{compile, graph, simulator, verilog};
 use std::collections::BTreeMap;
 use std::fs;
 
@@ -61,6 +61,76 @@ module WeirdMixer42 {
     assert_eq!(table.rows[0]["stage"], 3);
     assert_eq!(table.rows[0]["mixed"], 5);
     assert_eq!(table.rows[0]["live"], 1);
+}
+
+#[test]
+fn conditional_expression_lowers_to_mux_and_simulates() {
+    let source = r#"
+module IfMux {
+    input sel: bit;
+    input a: u4;
+    input b: u4;
+
+    output out: u4;
+
+    out = if sel { a } else { b };
+}
+"#;
+
+    let compiled = compile(source).expect("conditional mux should compile");
+
+    let ir_text = compiled.ir.to_string();
+    assert!(ir_text.contains("Gate MUX"));
+    assert!(ir_text.contains("Select: sel"));
+
+    let verilog = verilog::emit(&compiled.ir);
+    assert!(verilog.contains("assign out = (sel ? a : b);"));
+
+    let dot = graph::emit_dot(&compiled.ir);
+    assert!(dot.contains("MUX"));
+    assert!(dot.contains("[label=\"sel\"]"));
+
+    let mermaid = graph::emit_mermaid(&compiled.ir);
+    assert!(mermaid.contains("MUX"));
+
+    let mut inputs = BTreeMap::new();
+    inputs.insert("sel".to_string(), 1);
+    inputs.insert("a".to_string(), 9);
+    inputs.insert("b".to_string(), 3);
+    let result = simulator::run(&compiled.ir, &SimOptions { ticks: 1, inputs })
+        .expect("selected true branch should simulate");
+    let SimulationResult::TruthTable(table) = result else {
+        panic!("conditional mux should produce a truth table");
+    };
+    assert_eq!(table.rows[0]["out"], 9);
+
+    let mut inputs = BTreeMap::new();
+    inputs.insert("sel".to_string(), 0);
+    inputs.insert("a".to_string(), 9);
+    inputs.insert("b".to_string(), 3);
+    let result = simulator::run(&compiled.ir, &SimOptions { ticks: 1, inputs })
+        .expect("selected false branch should simulate");
+    let SimulationResult::TruthTable(table) = result else {
+        panic!("conditional mux should produce a truth table");
+    };
+    assert_eq!(table.rows[0]["out"], 3);
+}
+
+#[test]
+fn conditional_expression_rejects_unsafe_branch_width() {
+    let source = r#"
+module BadConditionalWidth {
+    input sel: bit;
+    input wide: u4;
+
+    output out: bit;
+
+    out = if sel { wide } else { 0 };
+}
+"#;
+
+    let error = compile(source).expect_err("wide branch should fail width checking");
+    assert!(error.message.contains("Width mismatch"));
 }
 
 #[test]

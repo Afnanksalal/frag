@@ -281,6 +281,8 @@ fn token_label(kind: &TokenKind) -> String {
         TokenKind::On => "On".to_string(),
         TokenKind::Rising => "Rising".to_string(),
         TokenKind::Falling => "Falling".to_string(),
+        TokenKind::If => "If".to_string(),
+        TokenKind::Else => "Else".to_string(),
         TokenKind::Bit => "Bit".to_string(),
         TokenKind::BoolType => "BoolType".to_string(),
         TokenKind::Colon => "Colon".to_string(),

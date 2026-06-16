@@ -162,6 +162,30 @@ impl DotGraph {
                 self.line(&format!("  \"{}\" -> \"{}\";", right, node));
                 node
             }
+            Expr::Conditional {
+                condition,
+                then_expr,
+                else_expr,
+                ..
+            } => {
+                let condition = self.expr_node(condition);
+                let then_expr = self.expr_node(then_expr);
+                let else_expr = self.expr_node(else_expr);
+                let node = self.op_node("MUX");
+                self.line(&format!(
+                    "  \"{}\" -> \"{}\" [label=\"sel\"];",
+                    condition, node
+                ));
+                self.line(&format!(
+                    "  \"{}\" -> \"{}\" [label=\"1\"];",
+                    then_expr, node
+                ));
+                self.line(&format!(
+                    "  \"{}\" -> \"{}\" [label=\"0\"];",
+                    else_expr, node
+                ));
+                node
+            }
         }
     }
 
@@ -223,6 +247,21 @@ impl MermaidGraph {
                 self.line(&format!("  {} --> {}", right, node));
                 node
             }
+            Expr::Conditional {
+                condition,
+                then_expr,
+                else_expr,
+                ..
+            } => {
+                let condition = self.expr_node(condition);
+                let then_expr = self.expr_node(then_expr);
+                let else_expr = self.expr_node(else_expr);
+                let node = self.op_node("MUX");
+                self.line(&format!("  {} -- sel --> {}", condition, node));
+                self.line(&format!("  {} -- 1 --> {}", then_expr, node));
+                self.line(&format!("  {} -- 0 --> {}", else_expr, node));
+                node
+            }
         }
     }
 
@@ -269,6 +308,17 @@ fn expr_label(expr: &Expr) -> String {
             expr_label(left),
             op_name(*op),
             expr_label(right)
+        ),
+        Expr::Conditional {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => format!(
+            "if {} then {} else {}",
+            expr_label(condition),
+            expr_label(then_expr),
+            expr_label(else_expr)
         ),
     }
 }

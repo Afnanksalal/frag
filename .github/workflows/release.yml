@@ -92,7 +92,7 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           body_path: RELEASE_NOTES.md
           files: dist/*

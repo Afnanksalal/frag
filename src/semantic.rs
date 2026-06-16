@@ -230,6 +230,16 @@ fn check_expr(expr: &Expr, symbols: &BTreeMap<String, Symbol>) -> Result<()> {
             check_expr(left, symbols)?;
             check_expr(right, symbols)
         }
+        Expr::Conditional {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            check_expr(condition, symbols)?;
+            check_expr(then_expr, symbols)?;
+            check_expr(else_expr, symbols)
+        }
     }
 }
 
@@ -284,6 +294,11 @@ pub fn expr_width(expr: &Expr, symbols: &BTreeMap<String, Symbol>) -> u32 {
             BinaryOp::Shl | BinaryOp::Shr => expr_width(left, symbols),
             _ => expr_width(left, symbols).max(expr_width(right, symbols)),
         },
+        Expr::Conditional {
+            then_expr,
+            else_expr,
+            ..
+        } => expr_width(then_expr, symbols).max(expr_width(else_expr, symbols)),
     }
 }
 
@@ -333,6 +348,21 @@ fn eval_unsized_const(expr: &Expr) -> Option<u128> {
                 BinaryOp::LogicAnd => Some(((left != 0) && (right != 0)) as u128),
                 BinaryOp::LogicOr => Some(((left != 0) || (right != 0)) as u128),
             }
+        }
+        Expr::Conditional {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            let condition = eval_unsized_const(condition)?;
+            let then_value = eval_unsized_const(then_expr)?;
+            let else_value = eval_unsized_const(else_expr)?;
+            Some(if condition != 0 {
+                then_value
+            } else {
+                else_value
+            })
         }
     }
 }
@@ -482,6 +512,16 @@ fn collect_refs(expr: &Expr, refs: &mut Vec<SignalRef>) {
         Expr::Binary { left, right, .. } => {
             collect_refs(left, refs);
             collect_refs(right, refs);
+        }
+        Expr::Conditional {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            collect_refs(condition, refs);
+            collect_refs(then_expr, refs);
+            collect_refs(else_expr, refs);
         }
         Expr::Number { .. } | Expr::Bool { .. } => {}
     }

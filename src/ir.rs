@@ -253,6 +253,18 @@ fn write_assignment(
             writeln!(f, "{}  Input: {}", indent, expr_inline(expr))?;
             writeln!(f, "{}  Output: {}", indent, assignment.target)
         }
+        Expr::Conditional {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => {
+            writeln!(f, "{}Gate MUX", indent)?;
+            writeln!(f, "{}  Select: {}", indent, expr_inline(condition))?;
+            writeln!(f, "{}  When 1: {}", indent, expr_inline(then_expr))?;
+            writeln!(f, "{}  When 0: {}", indent, expr_inline(else_expr))?;
+            writeln!(f, "{}  Output: {}", indent, assignment.target)
+        }
         expr => writeln!(
             f,
             "{}Assign {} = {}",
@@ -279,6 +291,17 @@ pub fn expr_inline(expr: &Expr) -> String {
         Expr::Binary {
             op, left, right, ..
         } => format!("({} {} {})", expr_inline(left), op, expr_inline(right)),
+        Expr::Conditional {
+            condition,
+            then_expr,
+            else_expr,
+            ..
+        } => format!(
+            "(if {} then {} else {})",
+            expr_inline(condition),
+            expr_inline(then_expr),
+            expr_inline(else_expr)
+        ),
     }
 }
 

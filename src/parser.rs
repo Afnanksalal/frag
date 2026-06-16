@@ -379,6 +379,7 @@ impl Parser {
                 name,
                 span: token.span,
             }),
+            TokenKind::If => self.parse_conditional_expr(token.span.start),
             TokenKind::LeftParen => {
                 let expr = self.parse_expr()?;
                 self.expect_simple(TokenKind::RightParen, "`)`")?;
@@ -389,6 +390,24 @@ impl Parser {
                 format!("Expected expression, found {}", other),
             )),
         }
+    }
+
+    fn parse_conditional_expr(&mut self, start: usize) -> Result<Expr> {
+        let condition = self.parse_expr()?;
+        self.expect_simple(TokenKind::LeftBrace, "`{`")?;
+        let then_expr = self.parse_expr()?;
+        self.expect_simple(TokenKind::RightBrace, "`}`")?;
+        self.expect_simple(TokenKind::Else, "`else`")?;
+        self.expect_simple(TokenKind::LeftBrace, "`{`")?;
+        let else_expr = self.parse_expr()?;
+        let end = self.expect_simple(TokenKind::RightBrace, "`}`")?.span.end;
+
+        Ok(Expr::Conditional {
+            condition: Box::new(condition),
+            then_expr: Box::new(then_expr),
+            else_expr: Box::new(else_expr),
+            span: Span::new(start, end),
+        })
     }
 
     fn expect_identifier(&mut self) -> Result<String> {

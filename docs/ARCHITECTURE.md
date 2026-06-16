@@ -32,7 +32,7 @@ The lexer does not decide whether a program is valid hardware. It only reports l
 
 `src/parser.rs` is a recursive descent parser. It turns tokens into the AST defined in `src/ast.rs`.
 
-Expression parsing is precedence-based. Assignment, declaration, and process parsing are kept explicit so the grammar remains easy to follow.
+Expression parsing is precedence-based. Assignment, declaration, and process parsing are implemented as explicit parser routines.
 
 ### AST
 
@@ -133,7 +133,7 @@ Combinational modules produce truth tables when total input width is small enoug
 - Graphviz DOT
 - Mermaid flowcharts
 
-These outputs are useful for teaching, documentation, and demos.
+These outputs are intended for documentation, inspection, and generated design artifacts.
 
 ## CLI
 

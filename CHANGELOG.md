@@ -4,6 +4,19 @@ All notable changes to Frag are documented here.
 
 This project follows semantic versioning once the language stabilizes. Until then, pre-1.0 releases may still introduce breaking language or CLI changes.
 
+## v0.1.0-alpha.2 - 2026-06-16
+
+### Added
+
+- Conditional expressions using `if condition { then_expr } else { else_expr }`
+- `mux4_if.frag` example
+- IR, Verilog, simulator, DOT, and Mermaid support for conditional expressions
+- Pipeline tests for conditional expression lowering, simulation, graph output, and width checking
+
+### Changed
+
+- README and roadmap documentation now use a shorter technical repository style
+
 ## v0.1.0-alpha.1 - 2026-06-15
 
 Initial HDL-focused alpha release.

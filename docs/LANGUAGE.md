@@ -119,6 +119,35 @@ Binary, from high to low precedence:
 ||
 ```
 
+## Conditional Expressions
+
+Frag supports mux-friendly conditional expressions:
+
+```frag
+out = if sel { a } else { b };
+```
+
+The condition is treated as false when it evaluates to zero and true otherwise.
+Both branches are ordinary expressions, so conditionals can be nested:
+
+```frag
+out = if sel == 0 {
+    a
+} else {
+    if sel == 1 { b } else { c }
+};
+```
+
+The Verilog backend emits a ternary expression:
+
+```verilog
+assign out = (sel ? a : b);
+```
+
+The result width is the wider of the two selectable branches. Assigning that
+result to a narrower target is rejected unless the whole expression is an
+unsized constant that fits.
+
 ## Literals
 
 ```frag
@@ -164,4 +193,4 @@ out = value; // width mismatch
 - No signed arithmetic
 - No reset syntax yet
 
-These limits are deliberate for now. Frag's goal is to be a compact compiler and hardware-design teaching tool.
+These limits describe the currently implemented language surface.

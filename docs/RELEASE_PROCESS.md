@@ -6,10 +6,10 @@ Frag releases are tag-driven.
 
 Frag is currently pre-1.0. Use alpha tags until the HDL surface is more stable.
 
-Recommended first release:
+Example alpha release tag:
 
 ```text
-v0.1.0-alpha.1
+v0.1.0-alpha.2
 ```
 
 ## Pre-Release Checklist
@@ -41,14 +41,13 @@ done
 Commit all release changes, then tag:
 
 ```bash
-git tag -a v0.1.0-alpha.1 -m "Frag v0.1.0-alpha.1"
+git tag -a v0.1.0-alpha.2 -m "Frag v0.1.0-alpha.2"
 git push origin main
-git push origin v0.1.0-alpha.1
+git push origin v0.1.0-alpha.2
 ```
 
-The GitHub Actions release workflow will build platform artifacts and create a draft GitHub Release.
-
-Review the draft release, edit notes if needed, then publish it from GitHub.
+The GitHub Actions release workflow builds platform artifacts and publishes a
+GitHub prerelease when the tag contains `alpha`, `beta`, or `rc`.
 
 ## Artifacts
 
