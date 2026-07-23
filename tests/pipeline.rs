@@ -429,6 +429,38 @@ module CaseMux {
 }
 
 #[test]
+fn case_expression_allows_trailing_comma() {
+    let source = r#"
+module TrailingCommaCase {
+    input sel: u2;
+    input a: u4;
+    input b: u4;
+
+    output out: u4;
+
+    out = case sel {
+        0 => a,
+        1 => b,
+        else => a,
+    };
+}
+"#;
+
+    let compiled = compile(source).expect("case with trailing comma should compile");
+    let mut inputs = BTreeMap::new();
+    inputs.insert("sel".to_string(), 1);
+    inputs.insert("a".to_string(), 7);
+    inputs.insert("b".to_string(), 9);
+    let result = simulator::run(&compiled.ir, &SimOptions { ticks: 1, inputs })
+        .expect("case branch should simulate");
+    let SimulationResult::TruthTable(table) = result else {
+        panic!("case with trailing comma should produce a truth table");
+    };
+
+    assert_eq!(table.rows[0]["out"], 9);
+}
+
+#[test]
 fn case_expression_requires_else_arm() {
     let source = r#"
 module MissingCaseElse {
@@ -649,6 +681,39 @@ module ForwardConst {
 }
 
 #[test]
+fn simulator_rejects_input_width_sum_overflow() {
+    let module = IrModule {
+        name: "OverflowInputWidth".to_string(),
+        signals: vec![
+            IrSignal {
+                name: "a".to_string(),
+                kind: IrSignalKind::Input,
+                width: u32::MAX,
+            },
+            IrSignal {
+                name: "b".to_string(),
+                kind: IrSignalKind::Input,
+                width: u32::MAX,
+            },
+            IrSignal {
+                name: "out".to_string(),
+                kind: IrSignalKind::Output,
+                width: 1,
+            },
+        ],
+        constants: Vec::new(),
+        combinational: Vec::new(),
+        processes: Vec::new(),
+    };
+
+    let error = simulator::run(&module, &SimOptions::default())
+        .expect_err("input width overflow should fail");
+    assert!(error
+        .message
+        .contains("Input widths for truth table simulation exceed supported range"));
+}
+
+#[test]
 fn reports_unknown_signal() {
     let source = r#"
 module Broken {
@@ -793,6 +858,72 @@ fn counter_ticks_forward() {
         panic!("counter should produce a waveform");
     };
 
-    assert_eq!(waveform.values["count"], vec![0, 1, 2, 3]);
-    assert_eq!(waveform.values["count_reg"], vec![0, 1, 2, 3]);
+    assert_eq!(waveform.values["count"], vec![0, 1, 1, 2]);
+    assert_eq!(waveform.values["count_reg"], vec![0, 1, 1, 2]);
+}
+
+#[test]
+fn rising_clock_edges_are_honored() {
+    let source = r#"
+module RisingOnly {
+    input clk: bit;
+    input gate: bit;
+
+    output out: u2;
+    reg state: u2;
+
+    out = state;
+
+    on rising(clk) {
+        state = if (gate) { state + 1 } else { state };
+    }
+}
+"#;
+
+    let compiled = compile(source).expect("rising-edge module should compile");
+    let options = SimOptions {
+        ticks: 4,
+        inputs: vec![("gate".to_string(), 1)].into_iter().collect(),
+    };
+
+    let result = simulator::run(&compiled.ir, &options).expect("simulation works");
+
+    let SimulationResult::Waveform(waveform) = result else {
+        panic!("rising-edge module should produce a waveform");
+    };
+
+    assert_eq!(waveform.values["out"], vec![0, 1, 1, 2]);
+    assert_eq!(waveform.values["state"], vec![0, 1, 1, 2]);
+}
+
+#[test]
+fn falling_clock_edges_are_honored() {
+    let source = r#"
+module FallingOnly {
+    input clk: bit;
+
+    output out: u2;
+    reg state: u2;
+
+    out = state;
+
+    on falling(clk) {
+        state = state + 1;
+    }
+}
+"#;
+
+    let compiled = compile(source).expect("falling-edge module should compile");
+    let options = SimOptions {
+        ticks: 4,
+        ..SimOptions::default()
+    };
+    let result = simulator::run(&compiled.ir, &options).expect("simulation works");
+
+    let SimulationResult::Waveform(waveform) = result else {
+        panic!("falling-edge module should produce a waveform");
+    };
+
+    assert_eq!(waveform.values["out"], vec![0, 0, 1, 1]);
+    assert_eq!(waveform.values["state"], vec![0, 0, 1, 1]);
 }

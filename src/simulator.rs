@@ -124,12 +124,16 @@ pub fn to_vcd(waveform: &Waveform) -> String {
 fn run_truth_table(module: &IrModule, options: &SimOptions) -> Result<TruthTable> {
     let inputs = signal_names(module, IrSignalKind::Input);
     let outputs = signal_names(module, IrSignalKind::Output);
-    let total_input_width: u32 = module
+    let mut total_input_width: u32 = 0;
+    for signal in module
         .signals
         .iter()
         .filter(|signal| signal.kind == IrSignalKind::Input)
-        .map(|signal| signal.width)
-        .sum();
+    {
+        total_input_width = total_input_width.checked_add(signal.width).ok_or_else(|| {
+            Diagnostic::new("Input widths for truth table simulation exceed supported range")
+        })?;
+    }
 
     let combinations = if options.inputs.is_empty() && total_input_width <= 8 {
         1u128 << total_input_width
@@ -158,6 +162,15 @@ fn run_waveform(module: &IrModule, options: &SimOptions) -> Result<Waveform> {
     let ticks = options.ticks.max(1);
     let mut values = initial_values(module, &options.inputs)?;
     let clocks = clock_names(module);
+    let forced_clocks = clocks
+        .iter()
+        .filter_map(|clock| {
+            options
+                .inputs
+                .get_key_value(clock.as_str())
+                .map(|(_, value)| (clock.clone(), value & 1))
+        })
+        .collect::<BTreeMap<_, _>>();
     let names = watched_names(module, &clocks);
     let widths = names
         .iter()
@@ -174,25 +187,33 @@ fn run_waveform(module: &IrModule, options: &SimOptions) -> Result<Waveform> {
         .collect::<BTreeMap<_, _>>();
 
     for tick in 0..ticks {
+        let mut previous_clocks = BTreeMap::new();
         for clock in &clocks {
-            values.insert(clock.clone(), (tick % 2) as u128);
+            previous_clocks.insert(clock.clone(), values.get(clock).copied().unwrap_or(0) & 1);
+        }
+
+        for clock in &clocks {
+            if let Some(value) = forced_clocks.get(clock) {
+                values.insert(clock.clone(), *value);
+            } else {
+                values.insert(clock.clone(), (tick % 2) as u128);
+            }
         }
 
         evaluate_combinational(module, &mut values);
-        for name in &names {
-            let value = values.get(name).copied().unwrap_or(0);
-            traces
-                .get_mut(name)
-                .expect("trace exists")
-                .push(mask(value, *widths.get(name).unwrap_or(&1)));
-        }
 
         let mut pending = BTreeMap::new();
         for process in &module.processes {
-            let _edge = match process.edge {
-                Edge::Rising => 1u8,
-                Edge::Falling => 0u8,
+            let previous = previous_clocks.get(&process.clock).copied().unwrap_or(0);
+            let current = values.get(&process.clock).copied().unwrap_or(0) & 1;
+            let should_fire = match process.edge {
+                Edge::Rising => previous == 0 && current == 1,
+                Edge::Falling => previous == 1 && current == 0,
             };
+            if !should_fire {
+                continue;
+            }
+
             for assignment in &process.assignments {
                 let width = module
                     .signal(&assignment.target)
@@ -205,6 +226,15 @@ fn run_waveform(module: &IrModule, options: &SimOptions) -> Result<Waveform> {
 
         for (name, value) in pending {
             values.insert(name, value);
+        }
+
+        evaluate_combinational(module, &mut values);
+        for name in &names {
+            let value = values.get(name).copied().unwrap_or(0);
+            traces
+                .get_mut(name)
+                .expect("trace exists")
+                .push(mask(value, *widths.get(name).unwrap_or(&1)));
         }
     }
 

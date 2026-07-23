@@ -133,6 +133,75 @@ fn generated_verilog_is_accepted_by_external_tools() {
     }
 }
 
+#[test]
+fn cli_rejects_unknown_command() {
+    let output = Command::new(frag_bin())
+        .arg("bogus-command")
+        .output()
+        .unwrap_or_else(|error| panic!("failed to start CLI: {error}"));
+
+    assert!(!output.status.success(), "expected CLI to fail");
+    assert!(
+        String::from_utf8_lossy(&output.stderr).contains("Unknown command"),
+        "unexpected stderr: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+#[test]
+fn cli_accepts_file_path_without_explicit_subcommand() {
+    let temp = fresh_temp_dir("frag-cli-path");
+    let output_path = temp.join("path_mode.v");
+    let output_arg = output_path.to_string_lossy().into_owned();
+    let mut command = Command::new(frag_bin());
+    command
+        .arg("examples/half_adder.frag")
+        .arg("-o")
+        .arg(output_arg);
+    run_checked("frag <file.frag> writes Verilog", &mut command);
+
+    let text = fs::read_to_string(&output_path).expect("generated Verilog output readable");
+    assert!(text.contains("module HalfAdder"));
+}
+
+#[test]
+fn cli_rejects_malformed_set_override() {
+    let output = Command::new(frag_bin())
+        .arg("run")
+        .arg("examples/half_adder.frag")
+        .arg("--set")
+        .arg("a")
+        .output()
+        .unwrap_or_else(|error| panic!("failed to start CLI: {error}"));
+
+    assert!(
+        !output.status.success(),
+        "expected invalid set syntax to fail"
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Invalid input override"),
+        "unexpected stderr: {stderr}"
+    );
+}
+
+#[test]
+fn cli_rejects_unknown_run_option() {
+    let output = Command::new(frag_bin())
+        .arg("run")
+        .arg("examples/half_adder.frag")
+        .arg("--bogus")
+        .output()
+        .unwrap_or_else(|error| panic!("failed to start CLI: {error}"));
+
+    assert!(!output.status.success(), "expected unknown option to fail");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("Unknown option"),
+        "unexpected stderr: {stderr}"
+    );
+}
+
 fn fresh_probe_source() -> &'static str {
     r#"
 module FreshProbe123 {

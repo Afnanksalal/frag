@@ -38,8 +38,14 @@ fn run_cli() -> Result<()> {
             )));
         }
         (args[0].as_str(), args[1].as_str(), &args[2..])
-    } else {
+    } else if args[0].contains('/') || args[0].ends_with(".frag") || Path::new(&args[0]).exists() {
         ("verilog", args[0].as_str(), &args[1..])
+    } else {
+        return Err(Diagnostic::new(format!(
+            "Unknown command `{}`; expected one of: {}",
+            args[0],
+            commands.join(", ")
+        )));
     };
 
     match command {
